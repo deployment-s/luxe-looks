@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, Outlet, useSearchParams } from 'react-router-dom';
+import { Upload, Download, Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useCategoryStore } from '@/store/useCategoryStore';
 import { ProtectedRoute } from '@/components/common/ProtectedRoute';
@@ -312,6 +313,15 @@ const ProductsPage = () => {
     setSelectedProduct(null);
   };
 
+  const handleDuplicate = async (product: Product) => {
+    try {
+      await useProductStore.getState().duplicateProduct(product.id);
+      // No need to manually refresh - store will update
+    } catch (error) {
+      // Error handled in store
+    }
+  };
+
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
   };
@@ -328,6 +338,45 @@ const ProductsPage = () => {
     setSearchQuery('');
     setFilters({ category: undefined, status: undefined, page: 1, limit: 25 });
     setSorting('created_at', 'desc');
+  };
+
+  const handleExport = async () => {
+    try {
+      // Build query params matching current filters
+      const params = new URLSearchParams();
+      if (searchQuery) params.append('search', searchQuery);
+      if (filters.category) params.append('category', filters.category);
+      if (filters.status) params.append('status', filters.status);
+      if (sortBy) params.append('sortBy', sortBy);
+      if (sortOrder) params.append('sortOrder', sortOrder);
+
+      // Request CSV export (the backend will return CSV with proper headers)
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/products/export?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const filename = `products-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Export downloaded successfully');
+    } catch (error) {
+      toast.error('Failed to export products');
+    }
   };
 
   const activeFiltersCount = (searchQuery ? 1 : 0) + (!!filters.category ? 1 : 0) + (!!filters.status ? 1 : 0);
@@ -370,12 +419,28 @@ const ProductsPage = () => {
           <h1 className="text-3xl font-serif font-bold text-white">Products</h1>
           <p className="text-dark-400 mt-1">Manage your product catalog</p>
         </div>
-        <button
-          onClick={handleAdd}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg transition-colors"
-        >
-          <span>+</span> Add Product
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => {/* Import modal will be implemented */}}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-dark-800 border border-dark-700 hover:bg-dark-700 text-white font-medium rounded-lg transition-colors"
+          >
+            <Upload size={18} />
+            Import
+          </button>
+          <button
+            onClick={handleExport}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg transition-colors"
+          >
+            <Download size={18} />
+            Export
+          </button>
+          <button
+            onClick={handleAdd}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg transition-colors"
+          >
+            <Plus size={18} /> Add Product
+          </button>
+        </div>
       </div>
 
       <ProductFilters
@@ -395,7 +460,7 @@ const ProductsPage = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
         </div>
       ) : (
-        <ProductTable onEdit={handleEdit} onDelete={handleDelete} products={displayedProducts} />
+        <ProductTable onEdit={handleEdit} onDelete={handleDelete} onDuplicate={handleDuplicate} products={displayedProducts} />
       )}
 
       {/* Pagination Controls */}

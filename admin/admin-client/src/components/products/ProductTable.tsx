@@ -5,6 +5,7 @@ import {
   Trash2,
   ChevronUp,
   ChevronDown,
+  Copy,
 } from 'lucide-react';
 import { useProductStore } from '@/store/useProductStore';
 import { Button } from '@/components/ui/Button';
@@ -14,12 +15,14 @@ import { format } from 'date-fns';
 interface ProductTableProps {
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
+  onDuplicate?: (product: Product) => void;
   products?: Product[];
 }
 
 export const ProductTable: React.FC<ProductTableProps> = ({
   onEdit,
   onDelete,
+  onDuplicate,
   products: propProducts,
 }) => {
   const {
@@ -224,6 +227,17 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                     >
                       <Edit2 size={16} />
                     </Button>
+                    {onDuplicate && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDuplicate(product)}
+                        title="Duplicate"
+                        className="text-blue-400 hover:text-blue-300"
+                      >
+                        <Copy size={16} />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"

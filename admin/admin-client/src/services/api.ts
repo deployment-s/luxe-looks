@@ -103,6 +103,27 @@ export const productService = {
     });
     return response.data;
   },
+
+  duplicate: async (id: number) => {
+    const response = await api.post<Product>(`/products/${id}/duplicate`);
+    return response.data;
+  },
+
+  exportProducts: async (filters?: ProductFilters) => {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const response = await api.get('/products/export', {
+      params,
+      responseType: 'blob', // For file download
+    });
+    return response.data;
+  },
 };
 
 // Category services

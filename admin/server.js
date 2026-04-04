@@ -224,7 +224,7 @@ app.post('/api/products', authenticateToken, upload.single('image'), (req, res) 
       if (err) {
         return res.status(500).json({ error: err.message });
       }
-      res.json({
+      const newProduct = {
         id: this.lastID,
         name,
         category,
@@ -236,7 +236,17 @@ app.post('/api/products', authenticateToken, upload.single('image'), (req, res) 
         status: status || 'published',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      });
+      };
+
+      // Broadcast event
+      if (req.app.locals.clients) {
+        const message = `event: product_created\ndata: ${JSON.stringify(newProduct)}\n\n`;
+        req.app.locals.clients.forEach(client => {
+          try { client.write(message); } catch (e) {}
+        });
+      }
+
+      res.json(newProduct);
     }
   );
 });
@@ -270,7 +280,7 @@ app.put('/api/products/:id', authenticateToken, upload.single('image'), (req, re
         }
         const savedStatus = status || product.status || 'published';
         console.log(`[PUT /api/products/${productId}] UPDATE successful. Status set to: ${savedStatus}`);
-        res.json({
+        const updatedProduct = {
           id: productId,
           name,
           category,
@@ -282,7 +292,17 @@ app.put('/api/products/:id', authenticateToken, upload.single('image'), (req, re
           status: savedStatus,
           created_at: product.created_at,
           updated_at: new Date().toISOString()
-        });
+        };
+
+        // Broadcast event
+        if (req.app.locals.clients) {
+          const message = `event: product_updated\ndata: ${JSON.stringify(updatedProduct)}\n\n`;
+          req.app.locals.clients.forEach(client => {
+            try { client.write(message); } catch (e) {}
+          });
+        }
+
+        res.json(updatedProduct);
       }
     );
   });
@@ -310,7 +330,249 @@ app.delete('/api/products/:id', authenticateToken, (req, res) => {
       if (err) {
         return res.status(500).json({ error: err.message });
       }
+
+      // Broadcast event
+      if (req.app.locals.clients) {
+        const message = `event: product_deleted\ndata: ${JSON.stringify({ id: productId })}\n\n`;
+        req.app.locals.clients.forEach(client => {
+          try { client.write(message); } catch (e) {}
+        });
+      }
+
       res.json({ message: 'Product deleted successfully' });
+    });
+  });
+});
+
+// ==================== ADVANCED PRODUCT OPERATIONS ====================
+
+// Bulk delete products
+app.post('/api/products/bulk-delete', authenticateToken, (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'ids array is required' });
+  }
+
+  // Get products to delete images
+  db.all('SELECT * FROM products WHERE id IN (' + ids.map(() => '?').join(',') + ')', ids, (err, products) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+
+    // Delete image files
+    products.forEach(product => {
+      if (product.image) {
+        const imagePath = path.join(__dirname, product.image);
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+        }
+      }
+    });
+
+    db.run('DELETE FROM products WHERE id IN (' + ids.map(() => '?').join(',') + ')', ids, function (err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({
+        message: `${this.affectedRows} product(s) deleted successfully`,
+        deletedCount: this.affectedRows
+      });
+    });
+  });
+});
+
+// Bulk update products
+app.post('/api/products/bulk-update', authenticateToken, (req, res) => {
+  const { ids, updates } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0 || !updates) {
+    return res.status(400).json({ error: 'ids array and updates object are required' });
+  }
+
+  // Build SET clause dynamically
+  const setClause = [];
+  const values = [];
+
+  if (updates.status) {
+    setClause.push('status = ?');
+    values.push(updates.status);
+  }
+  if (updates.category) {
+    setClause.push('category = ?');
+    values.push(updates.category);
+  }
+  if (updates.price) {
+    setClause.push('price = ?');
+    values.push(updates.price);
+  }
+  // Add other updateable fields as needed
+
+  if (setClause.length === 0) {
+    return res.status(400).json({ error: 'No valid fields to update' });
+  }
+
+  setClause.push('updated_at = CURRENT_TIMESTAMP');
+  values.push(...ids);
+
+  const sql = `UPDATE products SET ${setClause.join(', ')} WHERE id IN (${ids.map(() => '?').join(',')})`;
+  db.run(sql, values, function (err) {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({
+      message: `${this.affectedRows} product(s) updated successfully`,
+      updatedCount: this.affectedRows
+    });
+  });
+});
+
+// Duplicate product
+app.post('/api/products/:id/duplicate', authenticateToken, (req, res) => {
+  const productId = req.params.id;
+
+  db.get('SELECT * FROM products WHERE id = ?', [productId], (err, product) => {
+    if (err || !product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // Insert duplicate with new name
+    const newName = `${product.name} (Copy)`;
+    db.run(
+      `INSERT INTO products (name, category, price, description, image, rating, reviews, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [newName, product.category, product.price, product.description, product.image, product.rating, product.reviews, 'draft', new Date().toISOString(), new Date().toISOString()],
+      function (err) {
+        if (err) {
+          return res.status(500).json({ error: err.message });
+        }
+        res.json({
+          id: this.lastID,
+          name: newName,
+          category: product.category,
+          price: product.price,
+          description: product.description,
+          image: product.image,
+          rating: product.rating,
+          reviews: product.reviews,
+          status: 'draft',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      }
+    );
+  });
+});
+
+// Export products to CSV or JSON
+app.get('/api/products/export', authenticateToken, (req, res) => {
+  const { format = 'csv' } = req.query;
+
+  db.all('SELECT * FROM products ORDER BY created_at DESC', (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+
+    if (format === 'json') {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="products-${new Date().toISOString().split('T')[0]}.json"`);
+      return res.send(JSON.stringify(rows, null, 2));
+    }
+
+    // CSV export
+    const headers = ['ID', 'Name', 'Category', 'Price', 'Description', 'Rating', 'Reviews', 'Status', 'Created At', 'Updated At'];
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+
+    rows.forEach(product => {
+      const values = [
+        product.id,
+        `"${product.name.replace(/"/g, '""')}"`,
+        `"${product.category.replace(/"/g, '""')}"`,
+        `"${product.price.replace(/"/g, '""')}"`,
+        `"${(product.description || '').replace(/"/g, '""')}"`,
+        product.rating,
+        product.reviews,
+        product.status,
+        product.created_at,
+        product.updated_at
+      ];
+      csvRows.push(values.join(','));
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="products-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csvRows.join('\n'));
+  });
+});
+
+// Import products from CSV (placeholder)
+app.post('/api/products/import', authenticateToken, (req, res) => {
+  res.status(501).json({
+    error: 'CSV import requires csv-parser package. To implement: npm install csv-parser'
+  });
+});
+
+// Get product preview
+app.get('/api/products/:id/preview', (req, res) => {
+  db.get('SELECT * FROM products WHERE id = ?', [req.params.id], (err, product) => {
+    if (err || !product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.json({
+      product,
+      html: `
+        <div class="product-preview">
+          <h3>${product.name}</h3>
+          <p class="price">${product.price}</p>
+          <p class="description">${product.description || ''}</p>
+          ${product.image ? `<img src="${product.image}" alt="${product.name}" />` : ''}
+        </div>
+      `
+    });
+  });
+});
+
+// ==================== DASHBOARD API ====================
+
+// Get dashboard statistics
+app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
+  db.all(`
+    SELECT
+      (SELECT COUNT(*) FROM products) as totalProducts,
+      (SELECT COUNT(*) FROM categories) as totalCategories,
+      (SELECT AVG(rating) FROM products) as averageRating,
+      (SELECT SUM(reviews) FROM products) as totalReviews
+  `, (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    const stats = rows[0];
+
+    // Get recent products
+    db.all('SELECT * FROM products ORDER BY created_at DESC LIMIT 5', (err, recentProducts) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+
+      // Get products by category
+      db.all(`
+        SELECT category, COUNT(*) as count
+        FROM products
+        GROUP BY category
+        ORDER BY count DESC
+      `, (err, categoryData) => {
+        if (err) {
+          return res.status(500).json({ error: err.message });
+        }
+
+        res.json({
+          totalProducts: stats.totalProducts || 0,
+          totalCategories: stats.totalCategories || 0,
+          averageRating: stats.averageRating ? parseFloat(stats.averageRating).toFixed(1) : 0,
+          totalReviews: stats.totalReviews || 0,
+          recentProducts,
+          productsByCategory: categoryData
+        });
+      });
     });
   });
 });

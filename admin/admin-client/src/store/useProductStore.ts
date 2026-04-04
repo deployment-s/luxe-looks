@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Product, ProductFilters, ProductStatus } from '@/types';
 import { productService } from '@/services/api';
+import toast from 'react-hot-toast';
 
 interface ProductState {
   products: Product[];
@@ -15,6 +16,7 @@ interface ProductState {
   deleteProduct: (id: number) => Promise<void>;
   archiveProduct: (id: number) => Promise<Product>;
   restoreProduct: (id: number, previousStatus: ProductStatus) => Promise<Product>;
+  duplicateProduct: (id: number) => Promise<Product>;
   addProduct: (product: Product) => void;
   updateProduct: (updatedProduct: Product) => void;
   selectProduct: (id: number, selected: boolean) => void;
@@ -66,6 +68,20 @@ export const useProductStore = create<ProductState>((set) => ({
       }));
     } catch (error) {
       console.error('Failed to delete product:', error);
+      throw error;
+    }
+  },
+
+  duplicateProduct: async (id: number) => {
+    try {
+      const duplicated = await productService.duplicate(id);
+      set((state) => ({
+        products: [duplicated, ...state.products],
+      }));
+      toast.success('Product duplicated successfully');
+      return duplicated;
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Failed to duplicate product');
       throw error;
     }
   },
