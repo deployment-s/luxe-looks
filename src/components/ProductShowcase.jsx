@@ -86,7 +86,7 @@ const ProductShowcase = () => {
       const data = await response.json();
 
       // Map API products to component format
-      const mappedProducts = data.map((product, index) => ({
+      const mappedProducts = data.items.map((product, index) => ({
         id: product.id,
         name: product.name,
         category: product.category,

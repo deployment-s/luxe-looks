@@ -987,9 +987,17 @@ app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
 
 // ==================== CATEGORIES API ====================
 
-// Get all categories
+// Get all categories with product counts
 app.get('/api/categories', (req, res) => {
-  db.all('SELECT * FROM categories ORDER BY sort_order ASC, name ASC', (err, rows) => {
+  db.all(`
+    SELECT
+      c.*,
+      COUNT(p.id) as product_count
+    FROM categories c
+    LEFT JOIN products p ON c.name = p.category
+    GROUP BY c.id
+    ORDER BY c.sort_order ASC, c.name ASC
+  `, (err, rows) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -997,12 +1005,21 @@ app.get('/api/categories', (req, res) => {
   });
 });
 
-// Get single category
+// Get single category with product count
 app.get('/api/categories/:id', (req, res) => {
-  db.get('SELECT * FROM categories WHERE id = ?', [req.params.id], (err, row) => {
+  db.all(`
+    SELECT
+      c.*,
+      COUNT(p.id) as product_count
+    FROM categories c
+    LEFT JOIN products p ON c.name = p.category
+    WHERE c.id = ?
+    GROUP BY c.id
+  `, [req.params.id], (err, rows) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
+    const row = rows[0];
     if (!row) {
       return res.status(404).json({ error: 'Category not found' });
     }

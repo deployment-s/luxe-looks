@@ -184,7 +184,9 @@ export const CategoriesPage: React.FC = () => {
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-semibold text-white truncate">{category.name}</h3>
-                        <p className="text-sm text-dark-400">{category.product_count || 0} products</p>
+                        <p className="text-sm text-dark-400">
+                          {(category.product_count || 0)} {category.product_count === 1 ? 'product' : 'products'}
+                        </p>
                         <code className="text-xs text-dark-500">/{category.slug}</code>
                       </div>
                     </div>
