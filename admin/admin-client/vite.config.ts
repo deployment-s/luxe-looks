@@ -24,6 +24,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../admin-client',
+    outDir: '../dist',
+    emptyOutDir: true,
   },
 });

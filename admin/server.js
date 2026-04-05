@@ -6,16 +6,34 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
+const csv = require('csv-parser');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'luxe-looks-secret-key-change-in-production';
 
+// Multer configuration for CSV import (store in memory)
+const uploadCSV = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+});
+
+// Helper function to extract numeric value from price string
+function parsePriceToNumber(priceStr) {
+  if (!priceStr) return null;
+  // Remove non-digit characters except decimal point
+  const numericStr = priceStr.toString().replace(/[^0-9.]/g, '');
+  const num = parseFloat(numericStr);
+  return isNaN(num) ? null : num;
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/admin', express.static(path.join(__dirname, 'admin-client')));
+// Serve admin panel built files from /admin (handled by catch-all route below)
+// Static assets under /admin are served from the dist folder
+app.use('/admin/assets', express.static(path.join(__dirname, 'dist/assets')));
 
 // Ensure uploads directory exists
 if (!fs.existsSync('./uploads')) {
@@ -41,6 +59,7 @@ db.serialize(() => {
     name TEXT NOT NULL,
     category TEXT NOT NULL,
     price TEXT NOT NULL,
+    price_value REAL,
     description TEXT,
     image TEXT,
     rating REAL DEFAULT 4.0,
@@ -65,15 +84,16 @@ db.serialize(() => {
   )`);
 
   // Add missing columns to existing products table (migrations)
-  // Check if status column exists
   db.all("PRAGMA table_info(products)", (err, columns) => {
     if (err) {
       console.error('Migration ERROR checking products table:', err);
       return;
     }
-    console.log('Products table columns:', columns ? columns.map(c => c.name).join(', ') : 'none');
-    const hasStatusColumn = columns && columns.some(col => col.name === 'status');
-    if (!hasStatusColumn) {
+    const columnNames = columns ? columns.map(c => c.name) : [];
+    console.log('Products table columns:', columnNames.join(', '));
+
+    // Add status column if missing
+    if (!columnNames.includes('status')) {
       db.run(`ALTER TABLE products ADD COLUMN status TEXT DEFAULT 'published'`, (err) => {
         if (err) {
           console.error('Migration ERROR adding status column:', err.message);
@@ -81,10 +101,50 @@ db.serialize(() => {
           console.log('Migration: Added status column to products table');
         }
       });
+    }
+
+    // Add price_value column if missing
+    if (!columnNames.includes('price_value')) {
+      db.run(`ALTER TABLE products ADD COLUMN price_value REAL`, (err) => {
+        if (err) {
+          console.error('Migration ERROR adding price_value column:', err.message);
+        } else {
+          console.log('Migration: Added price_value column to products table');
+          // Backfill price_value from price string after column is added
+          backfillPriceValues();
+        }
+      });
     } else {
-      console.log('Migration: status column already exists');
+      // Backfill any NULL price_values
+      backfillPriceValues();
     }
   });
+
+  // Backfill price_value for all products that have NULL price_value
+  function backfillPriceValues() {
+    db.all('SELECT id, price FROM products WHERE price_value IS NULL', (err, rows) => {
+      if (err) {
+        console.error('Backfill ERROR:', err);
+        return;
+      }
+      if (rows.length === 0) {
+        console.log('Backfill: All products already have price_value');
+        return;
+      }
+      console.log(`Backfill: Filling price_value for ${rows.length} products`);
+      const stmt = db.prepare('UPDATE products SET price_value = ? WHERE id = ?');
+      rows.forEach(row => {
+        const priceVal = parsePriceToNumber(row.price);
+        stmt.run(priceVal, row.id);
+      });
+      rows.forEach(row => {
+        const priceVal = parsePriceToNumber(row.price);
+        stmt.run(priceVal, row.id);
+      });
+      stmt.finalize();
+      console.log('Backfill: Completed');
+    });
+  }
 });
 
 // Image upload configuration
@@ -188,13 +248,217 @@ app.post('/api/login', (req, res) => {
 
 // ==================== PRODUCT ROUTES ====================
 
-// Get all products
+// Get all products with filtering, pagination, and sorting
 app.get('/api/products', (req, res) => {
-  db.all('SELECT * FROM products ORDER BY created_at DESC', (err, rows) => {
+  const {
+    search,
+    category,
+    status,
+    minPrice,
+    maxPrice,
+    minRating,
+    maxRating,
+    dateFrom,
+    dateTo,
+    page = 1,
+    limit = 25,
+    sortBy = 'created_at',
+    sortOrder = 'desc'
+  } = req.query;
+
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+  const limitInt = parseInt(limit);
+  const orderBy = sortOrder === 'asc' ? 'ASC' : 'DESC';
+
+  // Build WHERE clause
+  const conditions = [];
+  const params = [];
+
+  if (search) {
+    conditions.push('(name LIKE ? OR description LIKE ?)');
+    const searchTerm = `%${search}%`;
+    params.push(searchTerm, searchTerm);
+  }
+
+  if (category) {
+    conditions.push('category = ?');
+    params.push(category);
+  }
+
+  if (status) {
+    conditions.push('status = ?');
+    params.push(status);
+  }
+
+  if (minPrice) {
+    conditions.push('price_value >= ?');
+    params.push(parseFloat(minPrice));
+  }
+
+  if (maxPrice) {
+    conditions.push('price_value <= ?');
+    params.push(parseFloat(maxPrice));
+  }
+
+  if (minRating) {
+    conditions.push('rating >= ?');
+    params.push(parseFloat(minRating));
+  }
+
+  if (maxRating) {
+    conditions.push('rating <= ?');
+    params.push(parseFloat(maxRating));
+  }
+
+  if (dateFrom) {
+    // For date range, include full day (00:00:00)
+    const fromDate = new Date(dateFrom);
+    fromDate.setHours(0, 0, 0, 0);
+    conditions.push('created_at >= ?');
+    params.push(fromDate.toISOString());
+  }
+
+  if (dateTo) {
+    // Include up to end of day (23:59:59)
+    const toDate = new Date(dateTo);
+    toDate.setHours(23, 59, 59, 999);
+    conditions.push('created_at <= ?');
+    params.push(toDate.toISOString());
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const orderByClause = `ORDER BY ${sortBy} ${orderBy}`;
+
+  // First get total count
+  const countQuery = `SELECT COUNT(*) as total FROM products ${whereClause}`;
+  db.get(countQuery, params, (err, countResult) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
-    res.json(rows);
+    const total = countResult.total;
+
+    // Then get paginated results
+    const dataQuery = `SELECT * FROM products ${whereClause} ${orderByClause} LIMIT ? OFFSET ?`;
+    params.push(limitInt, offset);
+
+    db.all(dataQuery, params, (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json({
+        items: rows,
+        total,
+        page: parseInt(page),
+        limit: limitInt,
+        totalPages: Math.ceil(total / limitInt)
+      });
+    });
+  });
+});
+
+// Export products to CSV or JSON
+app.get('/api/products/export', authenticateToken, (req, res) => {
+  const {
+    format = 'csv',
+    search,
+    category,
+    status,
+    minPrice,
+    maxPrice,
+    minRating,
+    maxRating,
+    dateFrom,
+    dateTo,
+    sortBy = 'created_at',
+    sortOrder = 'desc'
+  } = req.query;
+
+  // Build WHERE clause (same as GET /api/products)
+  const conditions = [];
+  const params = [];
+
+  if (search) {
+    conditions.push('(name LIKE ? OR description LIKE ?)');
+    const searchTerm = `%${search}%`;
+    params.push(searchTerm, searchTerm);
+  }
+  if (category) {
+    conditions.push('category = ?');
+    params.push(category);
+  }
+  if (status) {
+    conditions.push('status = ?');
+    params.push(status);
+  }
+  if (minPrice) {
+    conditions.push('price_value >= ?');
+    params.push(parseFloat(minPrice));
+  }
+  if (maxPrice) {
+    conditions.push('price_value <= ?');
+    params.push(parseFloat(maxPrice));
+  }
+  if (minRating) {
+    conditions.push('rating >= ?');
+    params.push(parseFloat(minRating));
+  }
+  if (maxRating) {
+    conditions.push('rating <= ?');
+    params.push(parseFloat(maxRating));
+  }
+  if (dateFrom) {
+    const fromDate = new Date(dateFrom);
+    fromDate.setHours(0, 0, 0, 0);
+    conditions.push('created_at >= ?');
+    params.push(fromDate.toISOString());
+  }
+  if (dateTo) {
+    const toDate = new Date(dateTo);
+    toDate.setHours(23, 59, 59, 999);
+    conditions.push('created_at <= ?');
+    params.push(toDate.toISOString());
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const orderByClause = `ORDER BY ${sortBy} ${sortOrder === 'asc' ? 'ASC' : 'DESC'}`;
+
+  const query = `SELECT * FROM products ${whereClause} ${orderByClause}`;
+
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+
+    if (format === 'json') {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="products-${new Date().toISOString().split('T')[0]}.json"`);
+      return res.send(JSON.stringify(rows, null, 2));
+    }
+
+    // CSV export
+    const headers = ['ID', 'Name', 'Category', 'Price', 'Description', 'Rating', 'Reviews', 'Status', 'Created At', 'Updated At'];
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+
+    rows.forEach(product => {
+      const values = [
+        product.id,
+        `"${product.name.replace(/"/g, '""')}"`,
+        `"${product.category.replace(/"/g, '""')}"`,
+        `"${product.price.replace(/"/g, '""')}"`,
+        `"${(product.description || '').replace(/"/g, '""')}"`,
+        product.rating,
+        product.reviews,
+        product.status,
+        product.created_at,
+        product.updated_at
+      ];
+      csvRows.push(values.join(','));
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="products-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csvRows.join('\n'));
   });
 });
 
@@ -215,11 +479,12 @@ app.get('/api/products/:id', (req, res) => {
 app.post('/api/products', authenticateToken, upload.single('image'), (req, res) => {
   const { name, category, price, description, rating, reviews, status } = req.body;
   const image = req.file ? `/uploads/${req.file.filename}` : null;
+  const price_value = parsePriceToNumber(price);
 
   db.run(
-    `INSERT INTO products (name, category, price, description, image, rating, reviews, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [name, category, price, description, image, rating || 4.0, reviews || 0, status || 'published'],
+    `INSERT INTO products (name, category, price, price_value, description, image, rating, reviews, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [name, category, price, price_value, description, image, rating || 4.0, reviews || 0, status || 'published'],
     function (err) {
       if (err) {
         return res.status(500).json({ error: err.message });
@@ -234,6 +499,7 @@ app.post('/api/products', authenticateToken, upload.single('image'), (req, res) 
         rating: rating || 4.0,
         reviews: reviews || 0,
         status: status || 'published',
+        price_value,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -266,13 +532,14 @@ app.put('/api/products/:id', authenticateToken, upload.single('image'), (req, re
     }
 
     const image = req.file ? `/uploads/${req.file.filename}` : product.image;
+    const price_value = parsePriceToNumber(price);
 
     db.run(
       `UPDATE products
-       SET name = ?, category = ?, price = ?, description = ?,
+       SET name = ?, category = ?, price = ?, price_value = ?, description = ?,
            image = ?, rating = ?, reviews = ?, status = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
-      [name, category, price, description, image, rating, reviews, status || product.status || 'published', productId],
+      [name, category, price, price_value, description, image, rating, reviews, status || product.status || 'published', productId],
       function (err) {
         if (err) {
           console.error(`[PUT /api/products/${productId}] UPDATE error:`, err.message);
@@ -290,6 +557,7 @@ app.put('/api/products/:id', authenticateToken, upload.single('image'), (req, re
           rating: parseFloat(rating),
           reviews: parseInt(reviews),
           status: savedStatus,
+          price_value,
           created_at: product.created_at,
           updated_at: new Date().toISOString()
         };
@@ -403,6 +671,12 @@ app.post('/api/products/bulk-update', authenticateToken, (req, res) => {
   if (updates.price) {
     setClause.push('price = ?');
     values.push(updates.price);
+    // Also update price_value if we have a price update
+    const priceValue = parsePriceToNumber(updates.price);
+    if (priceValue !== null) {
+      setClause.push('price_value = ?');
+      values.push(priceValue);
+    }
   }
   // Add other updateable fields as needed
 
@@ -421,6 +695,84 @@ app.post('/api/products/bulk-update', authenticateToken, (req, res) => {
     res.json({
       message: `${this.affectedRows} product(s) updated successfully`,
       updatedCount: this.affectedRows
+    });
+  });
+});
+
+// Bulk price adjustment (percentage or fixed)
+app.post('/api/products/bulk-price-adjust', authenticateToken, (req, res) => {
+  const { ids, adjustment } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0 || !adjustment) {
+    return res.status(400).json({ error: 'ids array and adjustment object are required' });
+  }
+
+  const { type, value, operation } = adjustment; // type: 'percent' | 'fixed', operation: 'increase' | 'decrease'
+  if (type !== 'percent' && type !== 'fixed') {
+    return res.status(400).json({ error: 'Invalid adjustment type' });
+  }
+  if (typeof value !== 'number') {
+    return res.status(400).json({ error: 'Invalid adjustment value' });
+  }
+
+  // Fetch all selected products
+  db.all('SELECT * FROM products WHERE id IN (' + ids.map(() => '?').join(',') + ')', ids, async (err, products) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+
+    const updates = [];
+    for (const product of products) {
+      let currentPriceNum = product.price_value;
+      if (currentPriceNum == null) {
+        const numericStr = product.price.replace(/[^0-9.]/g, '');
+        currentPriceNum = parseFloat(numericStr) || 0;
+      }
+
+      let newPriceNum;
+      if (type === 'percent') {
+        const multiplier = operation === 'increase' ? (1 + value / 100) : (1 - value / 100);
+        newPriceNum = currentPriceNum * multiplier;
+      } else {
+        newPriceNum = operation === 'increase' ? currentPriceNum + value : currentPriceNum - value;
+      }
+      if (newPriceNum < 0) newPriceNum = 0;
+
+      // Format price string: keep original prefix if exists
+      const currencyMatch = product.price.match(/^[^\d]+/);
+      const prefix = currencyMatch ? currencyMatch[0].trim() : 'KSh';
+      const formattedPrice = `${prefix} ${newPriceNum.toLocaleString('en-KE', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+      updates.push({
+        id: product.id,
+        price: formattedPrice,
+        price_value: newPriceNum
+      });
+    }
+
+    // Perform updates in a transaction
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION');
+      const stmt = db.prepare('UPDATE products SET price = ?, price_value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+      let errorOccurred = false;
+      for (const u of updates) {
+        stmt.run(u.price, u.price_value, u.id, (err) => {
+          if (err) {
+            errorOccurred = true;
+            console.error(`Bulk price adjust error for product ${u.id}:`, err.message);
+          }
+        });
+      }
+      stmt.finalize();
+      if (errorOccurred) {
+        db.run('ROLLBACK');
+        return res.status(500).json({ error: 'One or more updates failed' });
+      } else {
+        db.run('COMMIT');
+        res.json({
+          message: `${updates.length} product(s) price adjusted successfully`,
+          adjustedCount: updates.length
+        });
+      }
     });
   });
 });
@@ -462,53 +814,109 @@ app.post('/api/products/:id/duplicate', authenticateToken, (req, res) => {
   });
 });
 
-// Export products to CSV or JSON
-app.get('/api/products/export', authenticateToken, (req, res) => {
-  const { format = 'csv' } = req.query;
+// Import products from CSV
+app.post('/api/products/import', authenticateToken, uploadCSV.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
 
-  db.all('SELECT * FROM products ORDER BY created_at DESC', (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: err.message });
+  const results = {
+    total: 0,
+    imported: 0,
+    errors: [],
+  };
+
+  try {
+    // Parse CSV from buffer
+    const csvData = req.file.buffer.toString('utf-8');
+    const rows = csvData.split('\n').filter(line => line.trim());
+
+    if (rows.length <= 1) {
+      return res.status(400).json({ error: 'CSV file is empty or has no data rows' });
     }
 
-    if (format === 'json') {
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename="products-${new Date().toISOString().split('T')[0]}.json"`);
-      return res.send(JSON.stringify(rows, null, 2));
+    // Parse header
+    const headers = rows[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+
+    // Required columns
+    const requiredColumns = ['name', 'category', 'price'];
+    const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+    if (missingColumns.length > 0) {
+      return res.status(400).json({
+        error: `Missing required columns: ${missingColumns.join(', ')}`,
+        requiredColumns,
+      });
     }
 
-    // CSV export
-    const headers = ['ID', 'Name', 'Category', 'Price', 'Description', 'Rating', 'Reviews', 'Status', 'Created At', 'Updated At'];
-    const csvRows = [];
-    csvRows.push(headers.join(','));
+    // Get column indices
+    const idx = {};
+    headers.forEach((header, i) => { idx[header] = i; });
 
-    rows.forEach(product => {
-      const values = [
-        product.id,
-        `"${product.name.replace(/"/g, '""')}"`,
-        `"${product.category.replace(/"/g, '""')}"`,
-        `"${product.price.replace(/"/g, '""')}"`,
-        `"${(product.description || '').replace(/"/g, '""')}"`,
-        product.rating,
-        product.reviews,
-        product.status,
-        product.created_at,
-        product.updated_at
-      ];
-      csvRows.push(values.join(','));
-    });
+    // Process each data row
+    for (let i = 1; i < rows.length; i++) {
+      results.total++;
+      const row = rows[i];
+      if (!row.trim()) continue; // Skip empty rows
 
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="products-${new Date().toISOString().split('T')[0]}.csv"`);
-    res.send(csvRows.join('\n'));
-  });
-});
+      // Simple CSV split (handles basic cases, not quoted fields with commas)
+      const values = row.split(',').map(v => v.trim().replace(/^["']|["']$/g, ''));
 
-// Import products from CSV (placeholder)
-app.post('/api/products/import', authenticateToken, (req, res) => {
-  res.status(501).json({
-    error: 'CSV import requires csv-parser package. To implement: npm install csv-parser'
-  });
+      const name = values[idx.name];
+      const category = values[idx.category];
+      const priceStr = values[idx.price];
+      const description = values[idx.description] || '';
+      const image = values[idx.image] || null;
+      const rating = values[idx.rating] ? parseFloat(values[idx.rating]) : 0;
+      const reviews = values[idx.reviews] ? parseInt(values[idx.reviews]) : 0;
+      const status = values[idx.status] || 'draft';
+
+      // Validate required fields
+      if (!name || !category || !priceStr) {
+        results.errors.push({ row: i, error: 'Missing required fields (name, category, or price)' });
+        continue;
+      }
+
+      // Parse price to number
+      const price_value = parsePriceToNumber(priceStr);
+      if (price_value === null) {
+        results.errors.push({ row: i, error: `Invalid price: ${priceStr}` });
+        continue;
+      }
+
+      // Insert into database
+      db.run(
+        `INSERT INTO products (name, category, price, description, image, rating, reviews, status, price_value, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        [name, category, priceStr, description, image, rating, reviews, status, price_value],
+        function(err) {
+          if (err) {
+            results.errors.push({ row: i, error: err.message });
+          } else {
+            results.imported++;
+          }
+
+          // Check if this was the last row
+          if (i === rows.length - 1) {
+            const success = results.imported > 0;
+            const message = `Import completed: ${results.imported}/${results.total} products imported successfully`;
+            res.status(success ? 200 : 207).json({
+              success,
+              message,
+              results,
+            });
+          }
+        }
+      );
+    }
+
+    // Handle case where all rows were empty
+    if (results.total === 0) {
+      res.status(400).json({ error: 'No valid data rows found' });
+    }
+  } catch (error) {
+    console.error('Import error:', error);
+    res.status(500).json({ error: 'Failed to process CSV file', details: error.message });
+  }
 });
 
 // Get product preview
@@ -901,9 +1309,13 @@ function formatBytes(bytes, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-// Serve admin client
+// Serve admin client SPA for both /admin and /admin/*
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
 app.get('/admin/*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin-client', 'index.html'));
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 // Start server

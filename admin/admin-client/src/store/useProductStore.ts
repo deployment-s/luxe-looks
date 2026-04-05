@@ -17,6 +17,7 @@ interface ProductState {
   archiveProduct: (id: number) => Promise<Product>;
   restoreProduct: (id: number, previousStatus: ProductStatus) => Promise<Product>;
   duplicateProduct: (id: number) => Promise<Product>;
+  bulkUpdate: (ids: number[], updates: Partial<Product>) => Promise<{ updatedCount: number }>;
   addProduct: (product: Product) => void;
   updateProduct: (updatedProduct: Product) => void;
   selectProduct: (id: number, selected: boolean) => void;
@@ -42,12 +43,20 @@ export const useProductStore = create<ProductState>((set) => ({
     try {
       // Get current state
       const state = useProductStore.getState();
-      const apiFilters: ProductFilters = { ...state.filters };
+      const apiFilters: ProductFilters = {
+        ...state.filters,
+        sortBy: state.sortBy,
+        sortOrder: state.sortOrder,
+      };
       if (state.searchQuery) {
         apiFilters.search = state.searchQuery;
       }
-      const products = await productService.getAll(apiFilters);
-      set({ products, totalCount: products.length, isLoading: false });
+      const paginatedResponse = await productService.getAll(apiFilters);
+      set({
+        products: paginatedResponse.items,
+        totalCount: paginatedResponse.total,
+        isLoading: false
+      });
     } catch (error) {
       console.error('Failed to fetch products:', error);
       set({ isLoading: false });
@@ -82,6 +91,35 @@ export const useProductStore = create<ProductState>((set) => ({
       return duplicated;
     } catch (error: any) {
       toast.error(error?.response?.data?.error || 'Failed to duplicate product');
+      throw error;
+    }
+  },
+
+  bulkUpdate: async (ids: number[], updates: Partial<Product>) => {
+    try {
+      const result = await productService.bulkUpdate(ids, updates);
+      // Refresh products list to reflect changes
+      await useProductStore.getState().fetchProducts();
+      toast.success(`Updated ${result.updatedCount} products successfully`);
+      return result;
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Failed to bulk update products');
+      throw error;
+    }
+  },
+
+  bulkAdjustPrice: async (ids: number[], adjustmentType: 'percent' | 'fixed', value: number, operation: 'increase' | 'decrease') => {
+    try {
+      const result = await productService.bulkAdjustPrice(ids, {
+        type: adjustmentType,
+        value,
+        operation,
+      });
+      await useProductStore.getState().fetchProducts();
+      toast.success(`Adjusted prices for ${result.adjustedCount} products`);
+      return result;
+    } catch (error: any) {
+      toast.error(error?.response?.data?.error || 'Failed to adjust prices');
       throw error;
     }
   },

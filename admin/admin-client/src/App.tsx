@@ -10,8 +10,11 @@ import { Dashboard } from '@/components/dashboard/Dashboard';
 import { ProductTable } from '@/components/products/ProductTable';
 import { ProductForm } from '@/components/products/ProductForm';
 import { ProductFilters } from '@/components/products/ProductFilters';
+import { BulkActionModal } from '@/components/products/BulkActionModal';
+import { ProductPreviewModal } from '@/components/products/ProductPreviewModal';
+import { ProductImportModal } from '@/components/products/ProductImportModal';
 import { useProductStore } from '@/store/useProductStore';
-import type { Product } from '@/types';
+import type { Product, ProductStatus } from '@/types';
 import toast from 'react-hot-toast';
 
 // Import page components
@@ -120,6 +123,9 @@ const ProductsPage = () => {
   const [deleteConfirm, setDeleteConfirm] = React.useState<Product | null>(null);
   const [archivedProduct, setArchivedProduct] = React.useState<{ product: Product; previousStatus: Product['status']; toastId: string; timer: number } | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [bulkModalMode, setBulkModalMode] = React.useState<'status' | 'category' | 'price' | null>(null);
+  const [previewProduct, setPreviewProduct] = React.useState<Product | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
 
   const {
     products,
@@ -153,13 +159,30 @@ const ProductsPage = () => {
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || undefined;
     const status = searchParams.get('status') as 'draft' | 'published' | 'archived' | undefined;
+    const minPrice = searchParams.get('minPrice') ? parseFloat(searchParams.get('minPrice')!) : undefined;
+    const maxPrice = searchParams.get('maxPrice') ? parseFloat(searchParams.get('maxPrice')!) : undefined;
+    const minRating = searchParams.get('minRating') ? parseFloat(searchParams.get('minRating')!) : undefined;
+    const maxRating = searchParams.get('maxRating') ? parseFloat(searchParams.get('maxRating')!) : undefined;
+    const dateFrom = searchParams.get('dateFrom') || undefined;
+    const dateTo = searchParams.get('dateTo') || undefined;
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '25');
     const sortByParam = searchParams.get('sortBy') || 'created_at';
     const sortOrderParam = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
 
     setSearchQuery(search);
-    setFilters({ category, status, page, limit });
+    setFilters({
+      category,
+      status,
+      minPrice,
+      maxPrice,
+      minRating,
+      maxRating,
+      dateFrom,
+      dateTo,
+      page,
+      limit
+    });
     setSorting(sortByParam, sortOrderParam);
   }, [searchParams, setSearchQuery, setFilters, setSorting]);
 
@@ -169,6 +192,12 @@ const ProductsPage = () => {
     if (searchQuery) params.set('search', searchQuery);
     if (filters.category) params.set('category', filters.category);
     if (filters.status) params.set('status', filters.status);
+    if (filters.minPrice) params.set('minPrice', String(filters.minPrice));
+    if (filters.maxPrice) params.set('maxPrice', String(filters.maxPrice));
+    if (filters.minRating) params.set('minRating', String(filters.minRating));
+    if (filters.maxRating) params.set('maxRating', String(filters.maxRating));
+    if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+    if (filters.dateTo) params.set('dateTo', filters.dateTo);
     if (filters.page && filters.page > 1) params.set('page', String(filters.page));
     if (filters.limit && filters.limit !== 25) params.set('limit', String(filters.limit));
     if (sortBy !== 'created_at') params.set('sortBy', sortBy);
@@ -322,6 +351,14 @@ const ProductsPage = () => {
     }
   };
 
+  const handlePreview = (product: Product) => {
+    setPreviewProduct(product);
+  };
+
+  const closePreview = () => {
+    setPreviewProduct(null);
+  };
+
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
   };
@@ -334,10 +371,71 @@ const ProductsPage = () => {
     setFilters({ status: status as 'draft' | 'published' | 'archived' | undefined, page: 1 });
   };
 
+  const handleMinPriceChange = (value?: number) => {
+    setFilters({ minPrice: value, page: 1 });
+  };
+
+  const handleMaxPriceChange = (value?: number) => {
+    setFilters({ maxPrice: value, page: 1 });
+  };
+
+  const handleMinRatingChange = (value?: number) => {
+    setFilters({ minRating: value, page: 1 });
+  };
+
+  const handleMaxRatingChange = (value?: number) => {
+    setFilters({ maxRating: value, page: 1 });
+  };
+
+  const handleDateFromChange = (value?: string) => {
+    setFilters({ dateFrom: value, page: 1 });
+  };
+
+  const handleDateToChange = (value?: string) => {
+    setFilters({ dateTo: value, page: 1 });
+  };
+
   const clearFilters = () => {
     setSearchQuery('');
-    setFilters({ category: undefined, status: undefined, page: 1, limit: 25 });
+    setFilters({
+      category: undefined,
+      status: undefined,
+      minPrice: undefined,
+      maxPrice: undefined,
+      minRating: undefined,
+      maxRating: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
+      page: 1,
+      limit: 25
+    });
     setSorting('created_at', 'desc');
+  };
+
+  const openBulkModal = (mode: 'status' | 'category' | 'price') => {
+    setBulkModalMode(mode);
+  };
+
+  const closeBulkModal = () => {
+    setBulkModalMode(null);
+  };
+
+  const handleBulkConfirm = async (payload: any) => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+
+    try {
+      if (bulkModalMode === 'status' && payload.status) {
+        await useProductStore.getState().bulkUpdate(ids, { status: payload.status });
+      } else if (bulkModalMode === 'category' && payload.category) {
+        await useProductStore.getState().bulkUpdate(ids, { category: payload.category });
+      } else if (bulkModalMode === 'price' && payload.adjustment) {
+        const { type, value, operation } = payload.adjustment;
+        await useProductStore.getState().bulkAdjustPrice(ids, type, value, operation);
+      }
+    } catch (error) {
+      // Errors handled in store
+    }
   };
 
   const handleExport = async () => {
@@ -347,6 +445,12 @@ const ProductsPage = () => {
       if (searchQuery) params.append('search', searchQuery);
       if (filters.category) params.append('category', filters.category);
       if (filters.status) params.append('status', filters.status);
+      if (filters.minPrice) params.append('minPrice', filters.minPrice.toString());
+      if (filters.maxPrice) params.append('maxPrice', filters.maxPrice.toString());
+      if (filters.minRating) params.append('minRating', filters.minRating.toString());
+      if (filters.maxRating) params.append('maxRating', filters.maxRating.toString());
+      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom);
+      if (filters.dateTo) params.append('dateTo', filters.dateTo);
       if (sortBy) params.append('sortBy', sortBy);
       if (sortOrder) params.append('sortOrder', sortOrder);
 
@@ -379,7 +483,20 @@ const ProductsPage = () => {
     }
   };
 
-  const activeFiltersCount = (searchQuery ? 1 : 0) + (!!filters.category ? 1 : 0) + (!!filters.status ? 1 : 0);
+  const handleImportComplete = () => {
+    fetchProducts();
+  };
+
+  const activeFiltersCount =
+    (searchQuery ? 1 : 0) +
+    (!!filters.category ? 1 : 0) +
+    (!!filters.status ? 1 : 0) +
+    (!!filters.minPrice ? 1 : 0) +
+    (!!filters.maxPrice ? 1 : 0) +
+    (!!filters.minRating ? 1 : 0) +
+    (!!filters.maxRating ? 1 : 0) +
+    (!!filters.dateFrom ? 1 : 0) +
+    (!!filters.dateTo ? 1 : 0);
 
   // Pagination calculations
   const totalItems = useProductStore.getState().totalCount;
@@ -387,24 +504,12 @@ const ProductsPage = () => {
   const itemsPerPage = filters.limit || 25;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
 
-  // Sort products first (before pagination)
-  const sortedProducts = [...products].sort((a, b) => {
-    const aVal = a[sortBy as keyof Product];
-    const bVal = b[sortBy as keyof Product];
+  // Compute start and end indices for display
+  const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, totalItems);
 
-    if (typeof aVal === 'string' && typeof bVal === 'string') {
-      return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-    }
-    if (typeof aVal === 'number' && typeof bVal === 'number') {
-      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
-    }
-    return 0;
-  });
-
-  // Get current page items (client-side pagination)
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const displayedProducts = sortedProducts.slice(startIndex, endIndex);
+  // Server-side pagination: products array already contains the correct page items
+  const displayedProducts = products;
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -421,7 +526,7 @@ const ProductsPage = () => {
         </div>
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => {/* Import modal will be implemented */}}
+            onClick={() => setIsImportModalOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-dark-800 border border-dark-700 hover:bg-dark-700 text-white font-medium rounded-lg transition-colors"
           >
             <Upload size={18} />
@@ -450,6 +555,18 @@ const ProductsPage = () => {
         onCategoryChange={handleCategoryChange}
         status={filters.status || ''}
         onStatusChange={handleStatusChange}
+        minPrice={filters.minPrice}
+        onMinPriceChange={handleMinPriceChange}
+        maxPrice={filters.maxPrice}
+        onMaxPriceChange={handleMaxPriceChange}
+        minRating={filters.minRating}
+        onMinRatingChange={handleMinRatingChange}
+        maxRating={filters.maxRating}
+        onMaxRatingChange={handleMaxRatingChange}
+        dateFrom={filters.dateFrom}
+        onDateFromChange={handleDateFromChange}
+        dateTo={filters.dateTo}
+        onDateToChange={handleDateToChange}
         onClearFilters={clearFilters}
         activeFiltersCount={activeFiltersCount}
         categories={categories}
@@ -460,7 +577,16 @@ const ProductsPage = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
         </div>
       ) : (
-        <ProductTable onEdit={handleEdit} onDelete={handleDelete} onDuplicate={handleDuplicate} products={displayedProducts} />
+        <ProductTable
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onDuplicate={handleDuplicate}
+          onPreview={handlePreview}
+          onBulkStatus={() => openBulkModal('status')}
+          onBulkCategory={() => openBulkModal('category')}
+          onBulkPriceAdjust={() => openBulkModal('price')}
+          products={displayedProducts}
+        />
       )}
 
       {/* Pagination Controls */}
@@ -531,6 +657,29 @@ const ProductsPage = () => {
           )}
         </div>
       </div>
+
+      {/* Product Preview Modal */}
+      <ProductPreviewModal
+        product={previewProduct}
+        isOpen={previewProduct !== null}
+        onClose={closePreview}
+      />
+
+      {/* Bulk Action Modal */}
+      <BulkActionModal
+        isOpen={bulkModalMode !== null}
+        onClose={closeBulkModal}
+        mode={bulkModalMode || 'status'}
+        categories={categories}
+        onConfirm={handleBulkConfirm}
+      />
+
+      {/* Import Modal */}
+      <ProductImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportComplete={handleImportComplete}
+      />
 
       {/* Archive Confirmation Modal */}
       {deleteConfirm && (

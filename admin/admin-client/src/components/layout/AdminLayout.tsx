@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import logo from '/logo.png';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -60,7 +61,7 @@ export const AdminLayout: React.FC = () => {
         <div className="h-16 flex items-center justify-between px-4 border-b border-dark-800">
           <div className="flex items-center gap-3 overflow-hidden">
             <img
-              src="/logo.png"
+              src={logo}
               alt="Luxe Looks"
               className={`object-contain ${sidebarCollapsed ? 'h-8' : 'h-10'}`}
             />

@@ -6,6 +6,7 @@ import {
   ChevronUp,
   ChevronDown,
   Copy,
+  Eye,
 } from 'lucide-react';
 import { useProductStore } from '@/store/useProductStore';
 import { Button } from '@/components/ui/Button';
@@ -16,6 +17,10 @@ interface ProductTableProps {
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onDuplicate?: (product: Product) => void;
+  onPreview?: (product: Product) => void;
+  onBulkStatus?: () => void;
+  onBulkCategory?: () => void;
+  onBulkPriceAdjust?: () => void;
   products?: Product[];
 }
 
@@ -23,6 +28,10 @@ export const ProductTable: React.FC<ProductTableProps> = ({
   onEdit,
   onDelete,
   onDuplicate,
+  onPreview,
+  onBulkStatus,
+  onBulkCategory,
+  onBulkPriceAdjust,
   products: propProducts,
 }) => {
   const {
@@ -81,20 +90,31 @@ export const ProductTable: React.FC<ProductTableProps> = ({
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
-          className="bg-primary-500/10 border-b border-primary-500/30 px-6 py-3 flex items-center gap-4"
+          className="bg-primary-500/10 border-b border-primary-500/30 px-6 py-3 flex flex-wrap items-center gap-4"
         >
           <span className="text-sm text-primary-500 font-medium">
             {selectedIds.size} selected
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {onBulkStatus && (
+              <Button size="sm" variant="ghost" onClick={onBulkStatus}>
+                Update Status
+              </Button>
+            )}
+            {onBulkCategory && (
+              <Button size="sm" variant="ghost" onClick={onBulkCategory}>
+                Update Category
+              </Button>
+            )}
+            {onBulkPriceAdjust && (
+              <Button size="sm" variant="ghost" onClick={onBulkPriceAdjust}>
+                Adjust Price
+              </Button>
+            )}
             <Button size="sm" variant="ghost" onClick={handleBulkDelete} leftIcon={<Trash2 size={14} />}>
               Delete Selected
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={clearSelection}
-            >
+            <Button size="sm" variant="ghost" onClick={clearSelection}>
               Clear Selection
             </Button>
           </div>
@@ -177,8 +197,22 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                 </td>
                 <td className="table-cell">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-primary-400/20 to-primary-600/20 rounded-lg flex items-center justify-center text-xl">
-                      {product.category.charAt(0)}
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-dark-800 flex items-center justify-center border border-dark-700">
+                      {product.image ? (
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // If image fails to load, show placeholder
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            (e.target as HTMLElement).nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <div className={`${product.image ? 'hidden' : ''} text-2xl font-serif text-primary-500`}>
+                        {product.category?.charAt(0) || '?'}
+                      </div>
                     </div>
                     <div>
                       <p className="font-medium text-white">{product.name}</p>
@@ -219,6 +253,17 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                 </td>
                 <td className="table-cell text-right">
                   <div className="flex items-center justify-end gap-2">
+                    {onPreview && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onPreview(product)}
+                        title="Preview"
+                        className="text-green-400 hover:text-green-300"
+                      >
+                        <Eye size={16} />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"

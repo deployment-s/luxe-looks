@@ -83,7 +83,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         status: product.status || 'published',
       });
       if (product.image) {
-        setImagePreview(product.image.startsWith('http') ? product.image : `http://localhost:3001${product.image}`);
+        setImagePreview(product.image);
       }
     } else {
       setFormData({

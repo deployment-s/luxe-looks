@@ -60,12 +60,12 @@ export const productService = {
     const params = new URLSearchParams();
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (value !== undefined && value !== '' && value !== null) {
           params.append(key, String(value));
         }
       });
     }
-    const response = await api.get<Product[]>(`/products?${params.toString()}`);
+    const response = await api.get<PaginatedResponse<Product>>(`/products?${params.toString()}`);
     return response.data;
   },
 
@@ -106,6 +106,22 @@ export const productService = {
 
   duplicate: async (id: number) => {
     const response = await api.post<Product>(`/products/${id}/duplicate`);
+    return response.data;
+  },
+
+  bulkUpdate: async (ids: number[], updates: Partial<Product>) => {
+    const response = await api.post<{ message: string; updatedCount: number }>('/products/bulk-update', {
+      ids,
+      updates,
+    });
+    return response.data;
+  },
+
+  bulkAdjustPrice: async (ids: number[], adjustment: { type: 'percent' | 'fixed'; value: number; operation: 'increase' | 'decrease' }) => {
+    const response = await api.post<{ message: string; adjustedCount: number }>('/products/bulk-price-adjust', {
+      ids,
+      adjustment,
+    });
     return response.data;
   },
 
