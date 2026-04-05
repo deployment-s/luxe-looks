@@ -201,7 +201,7 @@ export const Dashboard: React.FC = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={stats.categoryData}
+                    data={localStats.categoryData}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -212,7 +212,7 @@ export const Dashboard: React.FC = () => {
                     fill="#8884d8"
                     dataKey="count"
                   >
-                    {stats.categoryData.map((entry, index) => (
+                    {localStats.categoryData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
                         fill={COLORS[index % COLORS.length]}
@@ -232,7 +232,7 @@ export const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {stats.recentProducts.map((product, index) => (
+              {localStats.recentProducts.map((product, index) => (
                 <motion.div
                   key={product.id}
                   initial={{ opacity: 0, x: -20 }}
