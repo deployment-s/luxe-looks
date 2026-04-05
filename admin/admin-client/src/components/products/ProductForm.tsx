@@ -423,6 +423,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                       onClick={() => {
                         setImagePreview(item.path);
                         setImageFile(null);
+                        setSelectedLibraryImage(item.path);
                         setShowMediaPicker(false);
                         clearMediaSelection();
                       }}
