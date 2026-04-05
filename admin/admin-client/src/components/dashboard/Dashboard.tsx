@@ -57,15 +57,16 @@ export const Dashboard: React.FC = () => {
 
   // Calculate statistics from products (fallback if API fails)
   const localStats = React.useMemo(() => {
+    const productList = products || [];
     if (!stats) {
-      const totalProducts = products.length;
-      const categories = new Set(products.map((p) => p.category)).size;
+      const totalProducts = productList.length;
+      const categories = new Set(productList.map((p) => p.category)).size;
       const avgRating =
-        products.length > 0
-          ? products.reduce((sum, p) => sum + p.rating, 0) / products.length
+        productList.length > 0
+          ? productList.reduce((sum, p) => sum + p.rating, 0) / productList.length
           : 0;
-      const totalReviews = products.reduce((sum, p) => sum + p.reviews, 0);
-      const recentProducts = products
+      const totalReviews = productList.reduce((sum, p) => sum + p.reviews, 0);
+      const recentProducts = productList
         .sort(
           (a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -74,7 +75,7 @@ export const Dashboard: React.FC = () => {
 
       // Products by category
       const categoryData = Object.entries(
-        products.reduce((acc, p) => {
+        productList.reduce((acc, p) => {
           acc[p.category] = (acc[p.category] || 0) + 1;
           return acc;
         }, {} as Record<string, number>)
@@ -95,42 +96,53 @@ export const Dashboard: React.FC = () => {
       categories: stats.totalCategories,
       avgRating: stats.averageRating,
       totalReviews: stats.totalReviews,
-      recentProducts: stats.recentProducts,
-      categoryData: stats.productsByCategory,
+      recentProducts: stats.recentProducts || [],
+      categoryData: stats.categoryData || [],
       changes: stats.changes
     };
   }, [stats, products]);
 
+  // Ensure localStats is never null/undefined for rendering
+  const safeStats = localStats || {
+    totalProducts: 0,
+    categories: 0,
+    avgRating: '0.0',
+    totalReviews: 0,
+    recentProducts: [],
+    categoryData: [],
+    changes: { products: '0', categories: 0, rating: '0', reviews: 0 }
+  };
+
   const statCards = [
     {
       title: 'Total Products',
-      value: localStats.totalProducts.toString(),
-      change: `${localStats.changes.products >= 0 ? '+' : ''}${localStats.changes.products}% from last month`,
-      trend: localStats.changes.products >= 0 ? 'up' : 'down',
+      value: safeStats.totalProducts.toString(),
+      change: `${safeStats.changes.products >= 0 ? '+' : ''}${safeStats.changes.products}% from last month`,
+      trend: safeStats.changes.products >= 0 ? 'up' : 'down',
       icon: Package,
       color: 'bg-blue-500',
     },
     {
       title: 'Categories',
-      value: localStats.categories.toString(),
-      change: `${localStats.changes.categories >= 0 ? '+' : ''}${localStats.changes.categories} from last month`,
-      trend: localStats.changes.categories >= 0 ? 'up' : 'down',
+      value: safeStats.categories.toString(),
+      change: `${safeStats.changes.categories >= 0 ? '+' : ''}${safeStats.changes.categories} from last month`,
+      trend: safeStats.changes.categories >= 0 ? 'up' : 'down',
       icon: Tag,
       color: 'bg-purple-500',
     },
     {
       title: 'Average Rating',
-      value: localStats.avgRating,
-      change: `${localStats.changes.rating >= 0 ? '+' : ''}${localStats.changes.rating} from last month`,
-      trend: localStats.changes.rating >= 0 ? 'up' : 'down',
+      value: safeStats.avgRating,
+      change: `${safeStats.changes.rating >= 0 ? '+' : ''}${safeStats.changes.rating} from last month`,
+      trend: safeStats.changes.rating >= 0 ? 'up' : 'down',
       icon: Star,
       color: 'bg-yellow-500',
     },
     {
       title: 'Total Reviews',
-      value: localStats.totalReviews.toLocaleString(),
-      change: `${localStats.changes.reviews >= 0 ? '+' : ''}${localStats.changes.reviews} from last month`,
-      trend: localStats.changes.reviews >= 0 ? 'up' : 'down',
+      value: safeStats.totalReviews.toLocaleString(),
+      change: `${safeStats.changes.reviews >= 0 ? '+' : ''}${safeStats.changes.reviews} from last month`,
+      trend: safeStats.changes.reviews >= 0 ? 'up' : 'down',
       icon: MessageSquare,
       color: 'bg-green-500',
     },
@@ -199,28 +211,34 @@ export const Dashboard: React.FC = () => {
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={localStats.categoryData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) =>
-                      `${name}: ${(percent * 100).toFixed(0)}%`
-                    }
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="count"
-                  >
-                    {localStats.categoryData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
+                {safeStats.categoryData.length > 0 ? (
+                  <PieChart>
+                    <Pie
+                      data={safeStats.categoryData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) =>
+                        `${name}: ${(percent * 100).toFixed(0)}%`
+                      }
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="count"
+                    >
+                      {safeStats.categoryData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-dark-400">
+                    No category data available
+                  </div>
+                )}
               </ResponsiveContainer>
             </div>
           </CardContent>
@@ -232,7 +250,7 @@ export const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {localStats.recentProducts.map((product, index) => (
+              {safeStats.recentProducts.map((product, index) => (
                 <motion.div
                   key={product.id}
                   initial={{ opacity: 0, x: -20 }}
@@ -259,7 +277,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                 </motion.div>
               ))}
-              {stats.recentProducts.length === 0 && (
+              {safeStats.recentProducts.length === 0 && (
                 <p className="text-center text-dark-400 py-8">
                   No products yet. Add your first product!
                 </p>

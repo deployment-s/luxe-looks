@@ -1027,10 +1027,16 @@ app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
           return res.status(500).json({ error: err.message });
         }
 
+        // Transform to match frontend expected format: { name, count }
+        const formattedCategoryData = categoryData.map(item => ({
+          name: item.category,
+          count: item.count
+        }));
+
         res.json({
           ...stats,
           recentProducts,
-          productsByCategory: categoryData
+          categoryData: formattedCategoryData
         });
       });
     });
