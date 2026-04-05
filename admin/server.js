@@ -1168,10 +1168,10 @@ app.post('/api/categories/reorder', authenticateToken, (req, res) => {
 // ==================== MEDIA API ====================
 
 // Get all media (images from uploads folder)
-app.get('/api/media', authenticateToken, (req, res) => {
+app.get('/api/media', authenticateToken, async (req, res) => {
   const uploadsDir = path.join(__dirname, 'uploads');
 
-  fs.readdir(uploadsDir, (err, files) => {
+  fs.readdir(uploadsDir, async (err, files) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -1181,29 +1181,37 @@ app.get('/api/media', authenticateToken, (req, res) => {
       return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
     });
 
-    const mediaList = imageFiles.map(filename => {
-      const filePath = path.join(uploadsDir, filename);
-      const stats = fs.existsSync(filePath) ? fs.statSync(filePath) : null;
-      const size = stats ? stats.size : 0;
-      const uploadDate = stats ? stats.mtime.toISOString() : '';
+    // Build media list with product counts in parallel
+    const mediaList = await Promise.all(
+      imageFiles.map(async (filename) => {
+        const filePath = path.join(uploadsDir, filename);
+        const stats = fs.existsSync(filePath) ? fs.statSync(filePath) : null;
+        const size = stats ? stats.size : 0;
+        const uploadDate = stats ? stats.mtime.toISOString() : '';
+        const imagePath = `/uploads/${filename}`;
 
-      // Get product count that uses this image
-      const imagePath = `/uploads/${filename}`;
-      // We'll count synchronously for simplicity
-      let productCount = 0;
-      db.get('SELECT COUNT(*) as count FROM products WHERE image = ?', [imagePath], (err, row) => {
-        if (!err && row) productCount = row.count;
-      });
+        // Get product count that uses this image
+        const productCount = await new Promise((resolve) => {
+          db.get('SELECT COUNT(*) as count FROM products WHERE image = ?', [imagePath], (err, row) => {
+            if (err) {
+              console.error('Error counting products for', filename, err);
+              resolve(0);
+            } else {
+              resolve(row ? row.count : 0);
+            }
+          });
+        });
 
-      return {
-        filename,
-        path: imagePath,
-        size,
-        size_formatted: formatBytes(size),
-        uploaded_at: uploadDate,
-        product_count: productCount
-      };
-    });
+        return {
+          filename,
+          path: imagePath,
+          size,
+          size_formatted: formatBytes(size),
+          uploaded_at: uploadDate,
+          product_count: productCount
+        };
+      })
+    );
 
     res.json(mediaList);
   });
