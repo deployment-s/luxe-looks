@@ -19,75 +19,118 @@ import { format } from 'date-fns';
 
 export const Dashboard: React.FC = () => {
   const { products, fetchProducts, isLoading } = useProductStore();
+  const [stats, setStats] = React.useState<{
+    totalProducts: number;
+    totalCategories: number;
+    averageRating: string;
+    totalReviews: number;
+    changes: {
+      products: string;
+      categories: number;
+      rating: string;
+      reviews: number;
+    };
+    recentProducts: any[];
+    productsByCategory: { name: string; count: number }[];
+  } | null>(null);
 
   useEffect(() => {
-    fetchProducts();
+    fetchDashboardStats();
   }, [fetchProducts]);
 
-  // Calculate statistics
-  const stats = React.useMemo(() => {
-    const totalProducts = products.length;
-    const categories = new Set(products.map((p) => p.category)).size;
-    const avgRating =
-      products.length > 0
-        ? products.reduce((sum, p) => sum + p.rating, 0) / products.length
-        : 0;
-    const totalReviews = products.reduce((sum, p) => sum + p.reviews, 0);
-    const recentProducts = products
-      .sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-      .slice(0, 5);
+  const fetchDashboardStats = async () => {
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch('/api/dashboard/stats', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error);
+    }
+  };
 
-    // Products by category
-    const categoryData = Object.entries(
-      products.reduce((acc, p) => {
-        acc[p.category] = (acc[p.category] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>)
-    ).map(([name, count]) => ({ name, count }));
+  // Calculate statistics from products (fallback if API fails)
+  const localStats = React.useMemo(() => {
+    if (!stats) {
+      const totalProducts = products.length;
+      const categories = new Set(products.map((p) => p.category)).size;
+      const avgRating =
+        products.length > 0
+          ? products.reduce((sum, p) => sum + p.rating, 0) / products.length
+          : 0;
+      const totalReviews = products.reduce((sum, p) => sum + p.reviews, 0);
+      const recentProducts = products
+        .sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+        .slice(0, 5);
 
+      // Products by category
+      const categoryData = Object.entries(
+        products.reduce((acc, p) => {
+          acc[p.category] = (acc[p.category] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      ).map(([name, count]) => ({ name, count }));
+
+      return {
+        totalProducts,
+        categories,
+        avgRating: avgRating.toFixed(1),
+        totalReviews,
+        recentProducts,
+        categoryData,
+        changes: { products: '0', categories: 0, rating: '0', reviews: 0 } // placeholder
+      };
+    }
     return {
-      totalProducts,
-      categories,
-      avgRating: avgRating.toFixed(1),
-      totalReviews,
-      recentProducts,
-      categoryData,
+      totalProducts: stats.totalProducts,
+      categories: stats.totalCategories,
+      avgRating: stats.averageRating,
+      totalReviews: stats.totalReviews,
+      recentProducts: stats.recentProducts,
+      categoryData: stats.productsByCategory,
+      changes: stats.changes
     };
-  }, [products]);
+  }, [stats, products]);
 
   const statCards = [
     {
       title: 'Total Products',
-      value: stats.totalProducts.toString(),
-      change: '+12%',
-      trend: 'up',
+      value: localStats.totalProducts.toString(),
+      change: `${localStats.changes.products >= 0 ? '+' : ''}${localStats.changes.products}% from last month`,
+      trend: localStats.changes.products >= 0 ? 'up' : 'down',
       icon: Package,
       color: 'bg-blue-500',
     },
     {
       title: 'Categories',
-      value: stats.categories.toString(),
-      change: '+2',
-      trend: 'up',
+      value: localStats.categories.toString(),
+      change: `${localStats.changes.categories >= 0 ? '+' : ''}${localStats.changes.categories} from last month`,
+      trend: localStats.changes.categories >= 0 ? 'up' : 'down',
       icon: Tag,
       color: 'bg-purple-500',
     },
     {
       title: 'Average Rating',
-      value: stats.avgRating,
-      change: '+0.3',
-      trend: 'up',
+      value: localStats.avgRating,
+      change: `${localStats.changes.rating >= 0 ? '+' : ''}${localStats.changes.rating} from last month`,
+      trend: localStats.changes.rating >= 0 ? 'up' : 'down',
       icon: Star,
       color: 'bg-yellow-500',
     },
     {
       title: 'Total Reviews',
-      value: stats.totalReviews.toLocaleString(),
-      change: '+48',
-      trend: 'up',
+      value: localStats.totalReviews.toLocaleString(),
+      change: `${localStats.changes.reviews >= 0 ? '+' : ''}${localStats.changes.reviews} from last month`,
+      trend: localStats.changes.reviews >= 0 ? 'up' : 'down',
       icon: MessageSquare,
       color: 'bg-green-500',
     },

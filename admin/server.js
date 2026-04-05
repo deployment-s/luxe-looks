@@ -941,19 +941,74 @@ app.get('/api/products/:id/preview', (req, res) => {
 
 // ==================== DASHBOARD API ====================
 
-// Get dashboard statistics
+// Get dashboard statistics with month-over-month comparisons
 app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
-  db.all(`
+  // Calculate date ranges for current and previous month
+  const now = new Date();
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  // Helper to format date for SQLite
+  const formatDate = (date) => date.toISOString();
+
+  // Query all stats in parallel
+  const statsQuery = `
     SELECT
-      (SELECT COUNT(*) FROM products) as totalProducts,
-      (SELECT COUNT(*) FROM categories) as totalCategories,
-      (SELECT AVG(rating) FROM products) as averageRating,
-      (SELECT SUM(reviews) FROM products) as totalReviews
-  `, (err, rows) => {
+      -- Current totals (all time)
+      COUNT(*) as currentTotalProducts,
+      -- Previous total (products that existed at start of current month)
+      COUNT(CASE WHEN created_at < ? THEN 1 END) as previousTotalProducts,
+      -- Categories
+      (SELECT COUNT(*) FROM categories) as currentTotalCategories,
+      (SELECT COUNT(*) FROM categories WHERE created_at < ?) as previousTotalCategories,
+      -- Average rating (all products vs products existing at start of month)
+      AVG(rating) as currentAvgRating,
+      AVG(CASE WHEN created_at < ? THEN rating END) as previousAvgRating,
+      -- Total reviews
+      SUM(reviews) as currentTotalReviews,
+      SUM(CASE WHEN created_at < ? THEN reviews END) as previousTotalReviews
+    FROM products
+  `;
+
+  const params = [
+    formatDate(currentMonthStart), // for previousTotalProducts
+    formatDate(currentMonthStart), // for previousTotalCategories
+    formatDate(currentMonthStart), // for previousAvgRating
+    formatDate(currentMonthStart)  // for previousTotalReviews
+  ];
+
+  db.all(statsQuery, params, (err, rows) => {
     if (err) {
       return res.status(500).json({ error: err.message });
     }
-    const stats = rows[0];
+    const data = rows[0];
+
+    // Calculate changes
+    const previousTotalProducts = data.previousTotalProducts || 1; // avoid divide by zero
+    const productsChange = ((data.currentTotalProducts - previousTotalProducts) / previousTotalProducts) * 100;
+
+    const previousTotalCategories = data.previousTotalCategories || 1;
+    const categoriesChange = data.currentTotalCategories - previousTotalCategories;
+
+    const previousAvgRating = data.previousAvgRating || data.currentAvgRating;
+    const ratingChange = (data.currentAvgRating || 0) - (previousAvgRating || 0);
+
+    const previousTotalReviews = data.previousTotalReviews || 0;
+    const reviewsChange = (data.currentTotalReviews || 0) - previousTotalReviews;
+
+    const stats = {
+      totalProducts: data.currentTotalProducts || 0,
+      totalCategories: data.currentTotalCategories || 0,
+      averageRating: data.currentAvgRating ? parseFloat(data.currentAvgRating).toFixed(1) : '0.0',
+      totalReviews: data.currentTotalReviews || 0,
+      changes: {
+        products: productsChange.toFixed(1), // percentage
+        categories: categoriesChange, // absolute number
+        rating: ratingChange.toFixed(1), // absolute difference
+        reviews: reviewsChange // absolute number
+      }
+    };
 
     // Get recent products
     db.all('SELECT * FROM products ORDER BY created_at DESC LIMIT 5', (err, recentProducts) => {
@@ -973,10 +1028,7 @@ app.get('/api/dashboard/stats', authenticateToken, (req, res) => {
         }
 
         res.json({
-          totalProducts: stats.totalProducts || 0,
-          totalCategories: stats.totalCategories || 0,
-          averageRating: stats.averageRating ? parseFloat(stats.averageRating).toFixed(1) : 0,
-          totalReviews: stats.totalReviews || 0,
+          ...stats,
           recentProducts,
           productsByCategory: categoryData
         });
