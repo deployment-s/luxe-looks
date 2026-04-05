@@ -6,6 +6,7 @@ import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/Button';
 import { useProductStore } from '@/store/useProductStore';
 import { useCategoryStore } from '@/store/useCategoryStore';
+import { useMediaStore } from '@/store/useMediaStore';
 import { productService } from '@/services/api';
 import type { Product, ProductStatus } from '@/types';
 import toast from 'react-hot-toast';
@@ -35,6 +36,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
 }) => {
   const { addProduct, updateProduct } = useProductStore();
   const { categories, fetchCategories } = useCategoryStore();
+  const { media, fetchMedia, selectMedia, clearSelection: clearMediaSelection } = useMediaStore();
   const [formData, setFormData] = useState<FormData>({
     name: '',
     category: '',
@@ -46,6 +48,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedLibraryImage, setSelectedLibraryImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
 
@@ -56,7 +59,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     }
   }, [categories.length, fetchCategories]);
 
-  // Load media picker (from media store) when needed - to be implemented
+  // Fetch media when media picker opens
+  useEffect(() => {
+    if (showMediaPicker && media.length === 0) {
+      fetchMedia();
+    }
+  }, [showMediaPicker, media.length, fetchMedia]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'] },
@@ -65,6 +73,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     onDrop: (acceptedFiles) => {
       const file = acceptedFiles[0];
       setImageFile(file);
+      setSelectedLibraryImage(null);
       const reader = new FileReader();
       reader.onload = (e) => setImagePreview(e.target?.result as string);
       reader.readAsDataURL(file);
@@ -84,6 +93,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       });
       if (product.image) {
         setImagePreview(product.image);
+        setSelectedLibraryImage(product.image);
+      } else {
+        setSelectedLibraryImage(null);
       }
     } else {
       setFormData({
@@ -97,6 +109,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       });
       setImageFile(null);
       setImagePreview(null);
+      setSelectedLibraryImage(null);
     }
   }, [product]);
 
@@ -115,6 +128,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       formDataToSend.append('status', formData.status);
       if (imageFile) {
         formDataToSend.append('image', imageFile);
+      } else if (selectedLibraryImage) {
+        formDataToSend.append('existing_image', selectedLibraryImage);
       }
 
       if (product) {
@@ -310,6 +325,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                         e.stopPropagation();
                         setImageFile(null);
                         setImagePreview(null);
+                        setSelectedLibraryImage(null);
                       }}
                       className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
                     >
@@ -327,6 +343,18 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                     </p>
                   </>
                 )}
+              </div>
+              <div className="mt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  leftIcon={<FolderOpen size={16} />}
+                  onClick={() => setShowMediaPicker(true)}
+                  className="mt-2"
+                >
+                  Browse Media Library
+                </Button>
               </div>
             </div>
 
@@ -346,6 +374,80 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           </form>
         </motion.div>
       </motion.div>
+
+      {/* Media Library Picker Modal */}
+      {showMediaPicker && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => {
+            setShowMediaPicker(false);
+            clearMediaSelection();
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-dark-900 border border-dark-800 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-dark-800 flex justify-between items-center">
+              <h2 className="text-2xl font-serif font-bold text-white">
+                Select Image from Media Library
+              </h2>
+              <button
+                onClick={() => {
+                  setShowMediaPicker(false);
+                  clearMediaSelection();
+                }}
+                className="p-2 rounded-lg hover:bg-dark-800 text-dark-400 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+              {media.length === 0 ? (
+                <div className="text-center py-12 text-dark-400">
+                  No images in media library. Upload some images first.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {media.map((item) => (
+                    <div
+                      key={item.filename}
+                      className="group relative aspect-square bg-dark-900 rounded-xl overflow-hidden border-2 border-dark-800 hover:border-primary-500 cursor-pointer transition-all"
+                      onClick={() => {
+                        setImagePreview(item.path);
+                        setImageFile(null);
+                        setShowMediaPicker(false);
+                        clearMediaSelection();
+                      }}
+                    >
+                      <img
+                        src={item.path}
+                        alt={item.filename}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-primary-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="bg-dark-900/80 text-white px-3 py-1 rounded-lg text-sm">
+                          Select
+                        </span>
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                        <p className="text-xs text-white truncate">{item.filename}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 };

@@ -477,8 +477,8 @@ app.get('/api/products/:id', (req, res) => {
 
 // Create product
 app.post('/api/products', authenticateToken, upload.single('image'), (req, res) => {
-  const { name, category, price, description, rating, reviews, status } = req.body;
-  const image = req.file ? `/uploads/${req.file.filename}` : null;
+  const { name, category, price, description, rating, reviews, status, existing_image } = req.body;
+  const image = req.file ? `/uploads/${req.file.filename}` : (existing_image || null);
   const price_value = parsePriceToNumber(price);
 
   db.run(
@@ -519,7 +519,7 @@ app.post('/api/products', authenticateToken, upload.single('image'), (req, res) 
 
 // Update product
 app.put('/api/products/:id', authenticateToken, upload.single('image'), (req, res) => {
-  const { name, category, price, description, rating, reviews, status } = req.body;
+  const { name, category, price, description, rating, reviews, status, existing_image } = req.body;
   console.log(`[PUT /api/products/${req.params.id}] Body:`, {
     name, category, price, description, rating, reviews, status
   });
@@ -531,7 +531,7 @@ app.put('/api/products/:id', authenticateToken, upload.single('image'), (req, re
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    const image = req.file ? `/uploads/${req.file.filename}` : product.image;
+    const image = req.file ? `/uploads/${req.file.filename}` : (existing_image || product.image);
     const price_value = parsePriceToNumber(price);
 
     db.run(
