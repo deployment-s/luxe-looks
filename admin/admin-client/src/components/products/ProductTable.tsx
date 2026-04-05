@@ -103,24 +103,24 @@ export const ProductTable: React.FC<ProductTableProps> = ({
           </span>
           <div className="flex flex-wrap gap-2">
             {onBulkStatus && (
-              <Button size="sm" variant="ghost" onClick={onBulkStatus}>
+              <Button size="sm" variant="ghost" onClick={onBulkStatus} className="text-white hover:text-white">
                 Update Status
               </Button>
             )}
             {onBulkCategory && (
-              <Button size="sm" variant="ghost" onClick={onBulkCategory}>
+              <Button size="sm" variant="ghost" onClick={onBulkCategory} className="text-white hover:text-white">
                 Update Category
               </Button>
             )}
             {onBulkPriceAdjust && (
-              <Button size="sm" variant="ghost" onClick={onBulkPriceAdjust}>
+              <Button size="sm" variant="ghost" onClick={onBulkPriceAdjust} className="text-white hover:text-white">
                 Adjust Price
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={handleBulkDelete} leftIcon={<Trash2 size={14} />}>
+            <Button size="sm" variant="ghost" onClick={handleBulkDelete} leftIcon={<Trash2 size={14} />} className="text-red-400 hover:text-red-300">
               Delete Selected
             </Button>
-            <Button size="sm" variant="ghost" onClick={clearSelection}>
+            <Button size="sm" variant="ghost" onClick={clearSelection} className="text-white hover:text-white">
               Clear Selection
             </Button>
           </div>
@@ -179,7 +179,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   <SortingIcon column="created_at" />
                 </div>
               </th>
-              <th className="px-6 py-3 text-right">Actions</th>
+              <th className="table-header text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-dark-800">
@@ -265,7 +265,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                         size="sm"
                         onClick={() => onPreview(product)}
                         title="Preview"
-                        className="text-green-400 hover:text-green-300"
+                        className="!text-green-400 hover:!text-green-300"
                       >
                         <Eye size={16} />
                       </Button>
