@@ -436,7 +436,7 @@ app.get('/api/products/export', authenticateToken, (req, res) => {
     }
 
     // CSV export
-    const headers = ['ID', 'Name', 'Category', 'Price', 'Description', 'Rating', 'Reviews', 'Status', 'Created At', 'Updated At'];
+    const headers = ['ID', 'Name', 'Category', 'Price', 'Description', 'Rating', 'Reviews', 'Status', 'Meta Title', 'Meta Description', 'Created At', 'Updated At'];
     const csvRows = [];
     csvRows.push(headers.join(','));
 
@@ -450,6 +450,8 @@ app.get('/api/products/export', authenticateToken, (req, res) => {
         product.rating,
         product.reviews,
         product.status,
+        `"${(product.meta_title || '').replace(/"/g, '""')}"`,
+        `"${(product.meta_description || '').replace(/"/g, '""')}"`,
         product.created_at,
         product.updated_at
       ];
@@ -477,14 +479,14 @@ app.get('/api/products/:id', (req, res) => {
 
 // Create product
 app.post('/api/products', authenticateToken, upload.single('image'), (req, res) => {
-  const { name, category, price, description, rating, reviews, status, existing_image } = req.body;
+  const { name, category, price, description, rating, reviews, status, existing_image, meta_title, meta_description } = req.body;
   const image = req.file ? `/uploads/${req.file.filename}` : (existing_image || null);
   const price_value = parsePriceToNumber(price);
 
   db.run(
-    `INSERT INTO products (name, category, price, price_value, description, image, rating, reviews, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [name, category, price, price_value, description, image, rating || 4.0, reviews || 0, status || 'published'],
+    `INSERT INTO products (name, category, price, price_value, description, image, rating, reviews, status, meta_title, meta_description)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [name, category, price, price_value, description, image, rating || 4.0, reviews || 0, status || 'published', meta_title || null, meta_description || null],
     function (err) {
       if (err) {
         return res.status(500).json({ error: err.message });
@@ -500,6 +502,8 @@ app.post('/api/products', authenticateToken, upload.single('image'), (req, res) 
         reviews: reviews || 0,
         status: status || 'published',
         price_value,
+        meta_title: meta_title || null,
+        meta_description: meta_description || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -519,9 +523,9 @@ app.post('/api/products', authenticateToken, upload.single('image'), (req, res) 
 
 // Update product
 app.put('/api/products/:id', authenticateToken, upload.single('image'), (req, res) => {
-  const { name, category, price, description, rating, reviews, status, existing_image } = req.body;
+  const { name, category, price, description, rating, reviews, status, existing_image, meta_title, meta_description } = req.body;
   console.log(`[PUT /api/products/${req.params.id}] Body:`, {
-    name, category, price, description, rating, reviews, status
+    name, category, price, description, rating, reviews, status, meta_title, meta_description
   });
   const productId = req.params.id;
 
@@ -537,9 +541,9 @@ app.put('/api/products/:id', authenticateToken, upload.single('image'), (req, re
     db.run(
       `UPDATE products
        SET name = ?, category = ?, price = ?, price_value = ?, description = ?,
-           image = ?, rating = ?, reviews = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+           image = ?, rating = ?, reviews = ?, status = ?, meta_title = ?, meta_description = ?, updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
-      [name, category, price, price_value, description, image, rating, reviews, status || product.status || 'published', productId],
+      [name, category, price, price_value, description, image, rating, reviews, status || product.status || 'published', meta_title || null, meta_description || null, productId],
       function (err) {
         if (err) {
           console.error(`[PUT /api/products/${productId}] UPDATE error:`, err.message);
@@ -558,6 +562,8 @@ app.put('/api/products/:id', authenticateToken, upload.single('image'), (req, re
           reviews: parseInt(reviews),
           status: savedStatus,
           price_value,
+          meta_title: meta_title || null,
+          meta_description: meta_description || null,
           created_at: product.created_at,
           updated_at: new Date().toISOString()
         };
@@ -788,10 +794,11 @@ app.post('/api/products/:id/duplicate', authenticateToken, (req, res) => {
 
     // Insert duplicate with new name
     const newName = `${product.name} (Copy)`;
+    const price_value = parsePriceToNumber(product.price);
     db.run(
-      `INSERT INTO products (name, category, price, description, image, rating, reviews, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [newName, product.category, product.price, product.description, product.image, product.rating, product.reviews, 'draft', new Date().toISOString(), new Date().toISOString()],
+      `INSERT INTO products (name, category, price, price_value, description, image, rating, reviews, status, meta_title, meta_description, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [newName, product.category, product.price, price_value, product.description, product.image, product.rating, product.reviews, 'draft', product.meta_title || null, product.meta_description || null, new Date().toISOString(), new Date().toISOString()],
       function (err) {
         if (err) {
           return res.status(500).json({ error: err.message });
@@ -806,6 +813,9 @@ app.post('/api/products/:id/duplicate', authenticateToken, (req, res) => {
           rating: product.rating,
           reviews: product.reviews,
           status: 'draft',
+          price_value,
+          meta_title: product.meta_title || null,
+          meta_description: product.meta_description || null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });
@@ -869,6 +879,8 @@ app.post('/api/products/import', authenticateToken, uploadCSV.single('file'), as
       const rating = values[idx.rating] ? parseFloat(values[idx.rating]) : 0;
       const reviews = values[idx.reviews] ? parseInt(values[idx.reviews]) : 0;
       const status = values[idx.status] || 'draft';
+      const meta_title = values[idx.meta_title] || null;
+      const meta_description = values[idx.meta_description] || null;
 
       // Validate required fields
       if (!name || !category || !priceStr) {
@@ -885,9 +897,9 @@ app.post('/api/products/import', authenticateToken, uploadCSV.single('file'), as
 
       // Insert into database
       db.run(
-        `INSERT INTO products (name, category, price, description, image, rating, reviews, status, price_value, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-        [name, category, priceStr, description, image, rating, reviews, status, price_value],
+        `INSERT INTO products (name, category, price, description, image, rating, reviews, status, price_value, meta_title, meta_description, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        [name, category, priceStr, description, image, rating, reviews, status, price_value, meta_title, meta_description],
         function(err) {
           if (err) {
             results.errors.push({ row: i, error: err.message });
@@ -1216,6 +1228,62 @@ app.post('/api/categories/reorder', authenticateToken, (req, res) => {
               return res.status(500).json({ error: errors.join(', ') });
             }
             res.json({ message: 'Categories reordered successfully' });
+          }
+        }
+      );
+    });
+  });
+});
+
+// ==================== SETTINGS API ====================
+
+// Get all settings as key-value object
+app.get('/api/settings', authenticateToken, (req, res) => {
+  db.all('SELECT key, value FROM settings', [], (err, rows) => {
+    if (err) {
+      console.error('Error fetching settings:', err.message);
+      return res.status(500).json({ error: 'Failed to fetch settings' });
+    }
+    const settings = {};
+    rows.forEach(row => {
+      settings[row.key] = row.value;
+    });
+    res.json(settings);
+  });
+});
+
+// Update settings (bulk)
+app.put('/api/settings', authenticateToken, (req, res) => {
+  const updates = req.body; // Expecting { key: value, ... }
+
+  if (!updates || typeof updates !== 'object') {
+    return res.status(400).json({ error: 'Settings object is required' });
+  }
+
+  db.serialize(() => {
+    let completed = 0;
+    const errors = [];
+    const keys = Object.keys(updates);
+
+    if (keys.length === 0) {
+      return res.status(400).json({ error: 'No settings to update' });
+    }
+
+    keys.forEach(key => {
+      const value = String(updates[key]);
+      db.run(
+        'INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
+        [key, value],
+        function (err) {
+          if (err) {
+            errors.push(`${key}: ${err.message}`);
+          }
+          completed++;
+          if (completed === keys.length) {
+            if (errors.length > 0) {
+              return res.status(500).json({ error: errors.join(', ') });
+            }
+            res.json({ message: 'Settings updated successfully' });
           }
         }
       );

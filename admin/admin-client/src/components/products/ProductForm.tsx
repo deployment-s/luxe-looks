@@ -26,6 +26,8 @@ interface FormData {
   rating: number;
   reviews: number;
   status: ProductStatus;
+  meta_title?: string;
+  meta_description?: string;
 }
 
 export const ProductForm: React.FC<ProductFormProps> = ({
@@ -45,6 +47,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     rating: 4.0,
     reviews: 0,
     status: 'published',
+    meta_title: '',
+    meta_description: '',
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -90,6 +94,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         rating: product.rating,
         reviews: product.reviews,
         status: product.status || 'published',
+        meta_title: product.meta_title || '',
+        meta_description: product.meta_description || '',
       });
       if (product.image) {
         setImagePreview(product.image);
@@ -106,6 +112,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         rating: 4.0,
         reviews: 0,
         status: 'published',
+        meta_title: '',
+        meta_description: '',
       });
       setImageFile(null);
       setImagePreview(null);
@@ -126,6 +134,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       formDataToSend.append('rating', String(formData.rating));
       formDataToSend.append('reviews', String(formData.reviews));
       formDataToSend.append('status', formData.status);
+      if (formData.meta_title) {
+        formDataToSend.append('meta_title', formData.meta_title);
+      }
+      if (formData.meta_description) {
+        formDataToSend.append('meta_description', formData.meta_description);
+      }
       if (imageFile) {
         formDataToSend.append('image', imageFile);
       } else if (selectedLibraryImage) {
@@ -299,6 +313,47 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                 className="input"
                 placeholder="Enter product description"
               />
+            </div>
+
+            {/* SEO Fields */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="h-px flex-1 bg-dark-800"></div>
+                <span className="text-sm text-dark-400 font-medium">SEO Settings</span>
+                <div className="h-px flex-1 bg-dark-800"></div>
+              </div>
+
+              <div>
+                <label className="label">Meta Title</label>
+                <input
+                  type="text"
+                  value={formData.meta_title || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, meta_title: e.target.value })
+                  }
+                  className="input"
+                  placeholder="SEO title (optional, defaults to product name)"
+                />
+                <p className="text-xs text-dark-500 mt-1">
+                  Leave empty to use product name as page title
+                </p>
+              </div>
+
+              <div>
+                <label className="label">Meta Description</label>
+                <textarea
+                  rows={2}
+                  value={formData.meta_description || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, meta_description: e.target.value })
+                  }
+                  className="input"
+                  placeholder="Short description for search engines (optional)"
+                />
+                <p className="text-xs text-dark-500 mt-1">
+                  Recommended: 150-160 characters for optimal SEO
+                </p>
+              </div>
             </div>
 
             <div>

@@ -1,16 +1,42 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Settings as SettingsIcon, Save, Upload, Database, Bell, Shield, Globe } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/common/Card';
 import { Button } from '@/components/ui/Button';
+import toast from 'react-hot-toast';
+import { settingsService } from '@/services/api';
 
-/**
- * Settings Page - Admin panel configuration
- * TODO: Implement full settings management with API integration
- */
+interface SettingsState {
+  site_name: string;
+  contact_email: string;
+  phone_number: string;
+  logo: string;
+  favicon: string;
+  facebook: string;
+  instagram: string;
+  whatsapp: string;
+  session_timeout: string;
+  rate_limit_requests: string;
+}
+
+const DEFAULT_SETTINGS: SettingsState = {
+  site_name: 'Luxe Looks',
+  contact_email: 'hello@luxelooks.co.ke',
+  phone_number: '+254 700 000 000',
+  logo: '',
+  favicon: '',
+  facebook: '',
+  instagram: '',
+  whatsapp: 'https://chat.whatsapp.com/Gb8xGhuAacOJzY7cuMO5tK',
+  session_timeout: '1440',
+  rate_limit_requests: '1000',
+};
+
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = React.useState('general');
   const [isSaving, setIsSaving] = React.useState(false);
+  const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
+  const [isLoading, setIsLoading] = useState(true);
 
   const tabs = [
     { id: 'general', label: 'General', icon: Globe },
@@ -19,14 +45,47 @@ export const SettingsPage: React.FC = () => {
     { id: 'backup', label: 'Backup', icon: Database },
   ];
 
+  // Fetch settings on mount
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const data = await settingsService.getAll();
+      setSettings(prev => ({ ...prev, ...data }));
+    } catch (error: any) {
+      console.error('Failed to fetch settings:', error);
+      toast.error('Failed to load settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
-    // TODO: Implement settings save
-    setTimeout(() => {
+    try {
+      await settingsService.update(settings);
+      toast.success('Settings saved successfully!');
+    } catch (error: any) {
+      console.error('Failed to save settings:', error);
+      toast.error('Failed to save settings');
+    } finally {
       setIsSaving(false);
-      alert('Settings saved! (Not implemented yet)');
-    }, 1000);
+    }
   };
+
+  const handleSettingChange = (key: keyof SettingsState, value: string) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -90,7 +149,8 @@ export const SettingsPage: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      defaultValue="Luxe Looks"
+                      value={settings.site_name}
+                      onChange={(e) => handleSettingChange('site_name', e.target.value)}
                       className="w-full px-4 py-2 bg-dark-900 border border-dark-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -100,7 +160,8 @@ export const SettingsPage: React.FC = () => {
                     </label>
                     <input
                       type="email"
-                      defaultValue="hello@luxelooks.co.ke"
+                      value={settings.contact_email}
+                      onChange={(e) => handleSettingChange('contact_email', e.target.value)}
                       className="w-full px-4 py-2 bg-dark-900 border border-dark-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -110,7 +171,8 @@ export const SettingsPage: React.FC = () => {
                     </label>
                     <input
                       type="tel"
-                      defaultValue="+254 700 000 000"
+                      value={settings.phone_number}
+                      onChange={(e) => handleSettingChange('phone_number', e.target.value)}
                       className="w-full px-4 py-2 bg-dark-900 border border-dark-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -156,6 +218,8 @@ export const SettingsPage: React.FC = () => {
                     </label>
                     <input
                       type="url"
+                      value={settings.facebook}
+                      onChange={(e) => handleSettingChange('facebook', e.target.value)}
                       placeholder="https://facebook.com/..."
                       className="w-full px-4 py-2 bg-dark-900 border border-dark-800 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
@@ -166,6 +230,8 @@ export const SettingsPage: React.FC = () => {
                     </label>
                     <input
                       type="url"
+                      value={settings.instagram}
+                      onChange={(e) => handleSettingChange('instagram', e.target.value)}
                       placeholder="https://instagram.com/..."
                       className="w-full px-4 py-2 bg-dark-900 border border-dark-800 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
@@ -176,7 +242,9 @@ export const SettingsPage: React.FC = () => {
                     </label>
                     <input
                       type="tel"
-                      placeholder="+254 700 000 000"
+                      value={settings.whatsapp}
+                      onChange={(e) => handleSettingChange('whatsapp', e.target.value)}
+                      placeholder="https://chat.whatsapp.com/..."
                       className="w-full px-4 py-2 bg-dark-900 border border-dark-800 rounded-lg text-white placeholder-dark-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -237,7 +305,8 @@ export const SettingsPage: React.FC = () => {
                     </label>
                     <input
                       type="number"
-                      defaultValue="1440"
+                      value={settings.session_timeout}
+                      onChange={(e) => handleSettingChange('session_timeout', e.target.value)}
                       className="w-full px-4 py-2 bg-dark-900 border border-dark-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -255,7 +324,8 @@ export const SettingsPage: React.FC = () => {
                     </label>
                     <input
                       type="number"
-                      defaultValue="1000"
+                      value={settings.rate_limit_requests}
+                      onChange={(e) => handleSettingChange('rate_limit_requests', e.target.value)}
                       className="w-full px-4 py-2 bg-dark-900 border border-dark-800 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
@@ -332,23 +402,18 @@ export const SettingsPage: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Settings - Under Development</CardTitle>
+          <CardTitle>System Status</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <p className="text-dark-400">
-              The full settings system is being implemented and will include:
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-dark-300">Last Saved</span>
+              <span className="text-white font-mono">{new Date().toLocaleString()}</span>
+            </div>
+            <p className="text-sm text-dark-400 mt-2">
+              Note: Some features like logo/favicon upload and backup/restore are coming soon.
+              Currently, settings are saved to the database and persist across restarts.
             </p>
-            <ul className="list-disc list-inside space-y-2 text-dark-300">
-              <li>Save settings to database with real-time updates</li>
-              <li>Logo and favicon upload with preview</li>
-              <li>Email configuration (SMTP settings)</li>
-              <li>API rate limiting configuration</li>
-              <li>Automatic database backups (daily)</li>
-              <li>Activity log viewer with export</li>
-              <li>Multi-admin user management (roles & permissions)</li>
-              <li>Session management (view and revoke sessions)</li>
-            </ul>
           </div>
         </CardContent>
       </Card>

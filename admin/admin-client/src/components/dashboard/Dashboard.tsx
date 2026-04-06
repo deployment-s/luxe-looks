@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Package, Tag, Star, MessageSquare, TrendingUp, Clock } from 'lucide-react';
+import { Package, Tag, Star, MessageSquare, TrendingUp, Clock, AlertCircle } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -13,136 +13,97 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { useProductStore } from '@/store/useProductStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/common/Card';
-import { format } from 'date-fns';
+import { dashboardService } from '@/services/api';
+import toast from 'react-hot-toast';
+
+interface DashboardStats {
+  totalProducts: number;
+  totalCategories: number;
+  averageRating: string;
+  totalReviews: number;
+  changes: {
+    products: string;
+    categories: number;
+    rating: string;
+    reviews: number;
+  };
+  recentProducts: any[];
+  categoryData: { name: string; count: number }[];
+}
 
 export const Dashboard: React.FC = () => {
-  const { products, fetchProducts, isLoading } = useProductStore();
-  const [stats, setStats] = React.useState<{
-    totalProducts: number;
-    totalCategories: number;
-    averageRating: string;
-    totalReviews: number;
-    changes: {
-      products: string;
-      categories: number;
-      rating: string;
-      reviews: number;
-    };
-    recentProducts: any[];
-    productsByCategory: { name: string; count: number }[];
-  } | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [statusDistribution, setStatusDistribution] = useState<{ name: string; value: number }[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchDashboardStats();
-  }, [fetchProducts]);
+    fetchDashboardData();
+  }, []);
 
-  const fetchDashboardStats = async () => {
+  const fetchDashboardData = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch('/api/dashboard/stats', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch dashboard stats:', error);
+      const data = await dashboardService.getStats();
+      setStats(data);
+
+      // Fetch status distribution (draft/published/archived)
+      // We'll calculate from products if available or make a separate query
+      // For now, we can add this to the API response later, but we'll compute locally
+      // Since we don't have products list here easily, we'll skip for now or compute from data
+      // Actually we don't have product status counts in current API - could be added later
+    } catch (err: any) {
+      console.error('Failed to fetch dashboard stats:', err);
+      setError(err?.response?.data?.error || 'Failed to load dashboard statistics');
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Calculate statistics from products (fallback if API fails)
-  const localStats = React.useMemo(() => {
-    const productList = products || [];
-    if (!stats) {
-      const totalProducts = productList.length;
-      const categories = new Set(productList.map((p) => p.category)).size;
-      const avgRating =
-        productList.length > 0
-          ? productList.reduce((sum, p) => sum + p.rating, 0) / productList.length
-          : 0;
-      const totalReviews = productList.reduce((sum, p) => sum + p.reviews, 0);
-      const recentProducts = productList
-        .sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        )
-        .slice(0, 5);
-
-      // Products by category
-      const categoryData = Object.entries(
-        productList.reduce((acc, p) => {
-          acc[p.category] = (acc[p.category] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>)
-      ).map(([name, count]) => ({ name, count }));
-
-      return {
-        totalProducts,
-        categories,
-        avgRating: avgRating.toFixed(1),
-        totalReviews,
-        recentProducts,
-        categoryData,
-        changes: { products: '0', categories: 0, rating: '0', reviews: 0 } // placeholder
-      };
-    }
-    return {
-      totalProducts: stats.totalProducts,
-      categories: stats.totalCategories,
-      avgRating: stats.averageRating,
-      totalReviews: stats.totalReviews,
-      recentProducts: stats.recentProducts || [],
-      categoryData: stats.categoryData || [],
-      changes: stats.changes
-    };
-  }, [stats, products]);
-
-  // Ensure localStats is never null/undefined for rendering
-  const safeStats = localStats || {
+  // Prepare stats for display
+  const displayStats = stats || {
     totalProducts: 0,
-    categories: 0,
-    avgRating: '0.0',
+    totalCategories: 0,
+    averageRating: '0.0',
     totalReviews: 0,
+    changes: { products: '0', categories: 0, rating: '0', reviews: 0 },
     recentProducts: [],
     categoryData: [],
-    changes: { products: '0', categories: 0, rating: '0', reviews: 0 }
   };
 
   const statCards = [
     {
       title: 'Total Products',
-      value: safeStats.totalProducts.toString(),
-      change: `${safeStats.changes.products >= 0 ? '+' : ''}${safeStats.changes.products}% from last month`,
-      trend: safeStats.changes.products >= 0 ? 'up' : 'down',
+      value: displayStats.totalProducts.toString(),
+      change: `${displayStats.changes.products >= 0 ? '+' : ''}${displayStats.changes.products}% from last month`,
+      trend: displayStats.changes.products >= 0 ? 'up' : 'down',
       icon: Package,
       color: 'bg-blue-500',
     },
     {
       title: 'Categories',
-      value: safeStats.categories.toString(),
-      change: `${safeStats.changes.categories >= 0 ? '+' : ''}${safeStats.changes.categories} from last month`,
-      trend: safeStats.changes.categories >= 0 ? 'up' : 'down',
+      value: displayStats.totalCategories.toString(),
+      change: `${displayStats.changes.categories >= 0 ? '+' : ''}${displayStats.changes.categories} from last month`,
+      trend: displayStats.changes.categories >= 0 ? 'up' : 'down',
       icon: Tag,
       color: 'bg-purple-500',
     },
     {
       title: 'Average Rating',
-      value: safeStats.avgRating,
-      change: `${safeStats.changes.rating >= 0 ? '+' : ''}${safeStats.changes.rating} from last month`,
-      trend: safeStats.changes.rating >= 0 ? 'up' : 'down',
+      value: displayStats.averageRating,
+      change: `${displayStats.changes.rating >= 0 ? '+' : ''}${displayStats.changes.rating} from last month`,
+      trend: displayStats.changes.rating >= 0 ? 'up' : 'down',
       icon: Star,
       color: 'bg-yellow-500',
     },
     {
       title: 'Total Reviews',
-      value: safeStats.totalReviews.toLocaleString(),
-      change: `${safeStats.changes.reviews >= 0 ? '+' : ''}${safeStats.changes.reviews} from last month`,
-      trend: safeStats.changes.reviews >= 0 ? 'up' : 'down',
+      value: displayStats.totalReviews.toLocaleString(),
+      change: `${displayStats.changes.reviews >= 0 ? '+' : ''}${displayStats.changes.reviews} from last month`,
+      trend: displayStats.changes.reviews >= 0 ? 'up' : 'down',
       icon: MessageSquare,
       color: 'bg-green-500',
     },
@@ -155,6 +116,37 @@ export const Dashboard: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
       </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6"
+      >
+        <Card className="border-red-500/50 bg-red-500/10">
+          <CardContent className="py-8">
+            <div className="flex items-center gap-3 text-red-400">
+              <AlertCircle size={24} />
+              <p className="font-medium">Error loading dashboard</p>
+            </div>
+            <p className="text-sm text-red-300 mt-2">{error}</p>
+            <Button onClick={fetchDashboardData} className="mt-4">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </motion.div>
     );
   }
 
@@ -211,10 +203,10 @@ export const Dashboard: React.FC = () => {
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                {safeStats.categoryData.length > 0 ? (
+                {displayStats.categoryData.length > 0 ? (
                   <PieChart>
                     <Pie
-                      data={safeStats.categoryData}
+                      data={displayStats.categoryData}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -225,7 +217,7 @@ export const Dashboard: React.FC = () => {
                       fill="#8884d8"
                       dataKey="count"
                     >
-                      {safeStats.categoryData.map((entry, index) => (
+                      {displayStats.categoryData.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={COLORS[index % COLORS.length]}
@@ -246,11 +238,11 @@ export const Dashboard: React.FC = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle>Recent Products</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {safeStats.recentProducts.map((product, index) => (
+              {displayStats.recentProducts.map((product, index) => (
                 <motion.div
                   key={product.id}
                   initial={{ opacity: 0, x: -20 }}
@@ -277,7 +269,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                 </motion.div>
               ))}
-              {safeStats.recentProducts.length === 0 && (
+              {displayStats.recentProducts.length === 0 && (
                 <p className="text-center text-dark-400 py-8">
                   No products yet. Add your first product!
                 </p>

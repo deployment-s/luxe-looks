@@ -209,4 +209,17 @@ export const dashboardService = {
   },
 };
 
+// Settings service
+export const settingsService = {
+  getAll: async () => {
+    const response = await api.get<Record<string, string>>('/settings');
+    return response.data;
+  },
+
+  update: async (settings: Record<string, string>) => {
+    const response = await api.put<{ message: string }>('/settings', settings);
+    return response.data;
+  },
+};
+
 export default api;
