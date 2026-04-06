@@ -77,7 +77,7 @@ const ProductShowcase = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/api/products');
+      const response = await fetch('http://localhost:3001/api/products?status=published');
 
       if (!response.ok) {
         throw new Error('API not available');
