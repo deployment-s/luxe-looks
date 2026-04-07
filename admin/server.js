@@ -1885,13 +1885,10 @@ app.get('/api/activity-logs/export', authenticateTokenWithSession, (req, res) =>
 
 // Cleanup old activity logs
 app.delete('/api/activity-logs/cleanup', authenticateTokenWithSession, (req, res) => {
-  const { days = 90 } = req.body;
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
+  const days = parseInt(req.query.days) || 90;
 
   db.run(
-    'DELETE FROM activity_logs WHERE created_at < ?',
-    [cutoffDate.toISOString()],
+    `DELETE FROM activity_logs WHERE created_at < datetime('now', '-${days} days')`,
     function (err) {
       if (err) {
         return res.status(500).json({ error: err.message });

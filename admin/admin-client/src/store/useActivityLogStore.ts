@@ -80,8 +80,13 @@ export const useActivityLogStore = create<ActivityLogState>((set, get) => ({
 
   cleanupLogs: async (days: number = 90) => {
     try {
-      await activityLogService.cleanup(days);
-      get().fetchLogs();
+      const result = await activityLogService.cleanup(days);
+      try {
+        await get().fetchLogs();
+      } catch {
+        // Ignore fetch errors, cleanup still succeeded
+      }
+      return result;
     } catch (error) {
       console.error('Failed to cleanup logs:', error);
       throw error;

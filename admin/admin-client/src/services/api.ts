@@ -316,9 +316,7 @@ export const activityLogService = {
   },
 
   cleanup: async (days: number = 90) => {
-    const response = await api.delete<{ message: string; deletedCount: number }>('/activity-logs/cleanup', {
-      data: { days },
-    });
+    const response = await api.delete<{ message: string; deletedCount: number }>(`/activity-logs/cleanup?days=${days}`);
     return response.data;
   },
 };
