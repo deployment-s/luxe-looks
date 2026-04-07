@@ -80,7 +80,7 @@ export const Dashboard: React.FC = () => {
     {
       title: 'Total Products',
       value: displayStats.totalProducts.toString(),
-      change: `${displayStats.changes.products >= 0 ? '+' : ''}${displayStats.changes.products}% from last month`,
+      change: `${displayStats.changes.products >= 0 ? '+' : ''}${displayStats.changes.products}%`,
       trend: displayStats.changes.products >= 0 ? 'up' : 'down',
       icon: Package,
       color: 'bg-blue-500',
@@ -88,7 +88,7 @@ export const Dashboard: React.FC = () => {
     {
       title: 'Categories',
       value: displayStats.totalCategories.toString(),
-      change: `${displayStats.changes.categories >= 0 ? '+' : ''}${displayStats.changes.categories} from last month`,
+      change: `${displayStats.changes.categories >= 0 ? '+' : ''}${displayStats.changes.categories}`,
       trend: displayStats.changes.categories >= 0 ? 'up' : 'down',
       icon: Tag,
       color: 'bg-purple-500',
@@ -96,7 +96,7 @@ export const Dashboard: React.FC = () => {
     {
       title: 'Average Rating',
       value: displayStats.averageRating,
-      change: `${displayStats.changes.rating >= 0 ? '+' : ''}${displayStats.changes.rating} from last month`,
+      change: `${displayStats.changes.rating >= 0 ? '+' : ''}${displayStats.changes.rating}`,
       trend: displayStats.changes.rating >= 0 ? 'up' : 'down',
       icon: Star,
       color: 'bg-yellow-500',
@@ -104,7 +104,7 @@ export const Dashboard: React.FC = () => {
     {
       title: 'Total Reviews',
       value: displayStats.totalReviews.toLocaleString(),
-      change: `${displayStats.changes.reviews >= 0 ? '+' : ''}${displayStats.changes.reviews} from last month`,
+      change: `${displayStats.changes.reviews >= 0 ? '+' : ''}${displayStats.changes.reviews}`,
       trend: displayStats.changes.reviews >= 0 ? 'up' : 'down',
       icon: MessageSquare,
       color: 'bg-green-500',
@@ -183,7 +183,7 @@ export const Dashboard: React.FC = () => {
                         stat.trend === 'up' ? 'text-green-400' : 'text-red-400'
                       }`}
                     >
-                      {stat.change} from last month
+                      {stat.change}
                     </p>
                   </div>
                   <div className={`${stat.color} p-3 rounded-lg`}>
