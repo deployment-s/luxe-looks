@@ -109,7 +109,7 @@ function App() {
           <Reviews />
           <Contact siteSettings={siteSettings} />
         </main>
-        <Footer siteSettings={siteSettings} />
+        <Footer siteSettings={siteSettings} categories={categories} />
         <FloatingWhatsApp siteSettings={siteSettings} />
         <BackToTop />
       </div>
