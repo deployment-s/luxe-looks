@@ -1,7 +1,7 @@
 require('dotenv').config({ path: __dirname + '/.env' });
 
-console.log('AWS Endpoint:', process.env.AWS_S3_ENDPOINT_URL);
-console.log('S3 Bucket:', process.env.BUCKET_NAME);
+// console.log('AWS Endpoint:', process.env.AWS_S3_ENDPOINT_URL);
+// console.log('S3 Bucket:', process.env.BUCKET_NAME);
 
 const express = require('express');
 const cors = require('cors');
@@ -185,10 +185,10 @@ db.serialize(() => {
         return;
       }
       if (rows.length === 0) {
-        console.log('Backfill: All products already have price_value');
+        // console.log('Backfill: All products already have price_value');
         return;
       }
-      console.log(`Backfill: Filling price_value for ${rows.length} products`);
+      // console.log(`Backfill: Filling price_value for ${rows.length} products`);
       const stmt = db.prepare('UPDATE products SET price_value = ? WHERE id = ?');
       rows.forEach(row => {
         const priceVal = parsePriceToNumber(row.price);
@@ -199,7 +199,7 @@ db.serialize(() => {
         stmt.run(priceVal, row.id);
       });
       stmt.finalize();
-      console.log('Backfill: Completed');
+      // console.log('Backfill: Completed');
     });
   }
 });
@@ -871,16 +871,16 @@ app.get('/api/products/:id', (req, res) => {
 
 // Create product
 app.post('/api/products', authenticateTokenWithSession, upload.single('image'), (req, res) => {
-  console.log('[POST /api/products] Upload debug:', {
-    hasFile: !!req.file,
-    file: req.file ? { filename: req.file.filename, location: req.file.location, mimetype: req.file.mimetype } : null,
-    bodyKeys: Object.keys(req.body),
-    isS3: isS3Configured(),
-    isSupabase: isSupabase()
-  });
+  // console.log('[POST /api/products] Upload debug:', {
+  //   hasFile: !!req.file,
+  //   file: req.file ? { filename: req.file.filename, location: req.file.location, mimetype: req.file.mimetype } : null,
+  //   bodyKeys: Object.keys(req.body),
+  //   isS3: isS3Configured(),
+  //   isSupabase: isSupabase()
+  // });
   const { name, category, price, description, rating, reviews, status, existing_image, meta_title, meta_description } = req.body;
   const image = getImagePath(req.file, existing_image);
-  console.log('[POST /api/products] Final image URL:', image);
+  // console.log('[POST /api/products] Final image URL:', image);
   const price_value = parsePriceToNumber(price);
 
   db.run(
@@ -926,14 +926,6 @@ app.post('/api/products', authenticateTokenWithSession, upload.single('image'), 
 // Update product
 app.put('/api/products/:id', authenticateTokenWithSession, upload.single('image'), (req, res) => {
   const { name, category, price, description, rating, reviews, status, existing_image, meta_title, meta_description } = req.body;
-  console.log(`[PUT /api/products/${req.params.id}] Body:`, {
-    name, category, price, description, rating, reviews, status, meta_title, meta_description
-  });
-  console.log(`[PUT /api/products/${req.params.id}] Upload debug:`, {
-    hasFile: !!req.file,
-    file: req.file ? { filename: req.file.filename, location: req.file.location } : null,
-    existing_image
-  });
   const productId = req.params.id;
 
   // First get current product to check for existing image
@@ -957,7 +949,7 @@ app.put('/api/products/:id', authenticateTokenWithSession, upload.single('image'
           return res.status(500).json({ error: err.message });
         }
         const savedStatus = status || product.status || 'published';
-        console.log(`[PUT /api/products/${productId}] UPDATE successful. Status set to: ${savedStatus}`);
+        // console.log(`[PUT /api/products/${productId}] UPDATE successful. Status set to: ${savedStatus}`);
         const updatedProduct = {
           id: productId,
           name,

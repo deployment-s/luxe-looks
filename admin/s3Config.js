@@ -43,11 +43,6 @@ let upload;
 
 if (isS3Configured()) {
   const s3Config = getS3Config();
-  console.log('S3 Configuration:', {
-    endpoint: s3Config.endpoint || 'AWS Default',
-    region: s3Config.region,
-    bucket: bucketName,
-  });
   
   s3Client = new S3Client(s3Config);
   
@@ -116,11 +111,7 @@ if (isS3Configured()) {
 
 // Get the image path - handles both S3 and local
 const getImagePath = (reqFile, existingImage = null) => {
-  console.log('getImagePath called:', { reqFile: !!reqFile, existingImage, isS3: isS3Configured() });
-  
   if (reqFile) {
-    console.log('File object:', reqFile);
-    
     // New file uploaded
     if (isS3Configured()) {
       let imageUrl;
@@ -134,12 +125,10 @@ const getImagePath = (reqFile, existingImage = null) => {
         imageUrl = reqFile.location;
       }
       
-      console.log('Returning S3 URL:', imageUrl);
       return imageUrl;
     }
     return `/uploads/${reqFile.filename}`; // Local storage
   }
-  console.log('No new file, returning existing:', existingImage);
   return existingImage || null;
 };
 
