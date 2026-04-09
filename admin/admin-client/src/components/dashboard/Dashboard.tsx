@@ -265,7 +265,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium text-primary-500">
-                      {product.price}
+                      {product.price ? `KSh ${parseFloat(product.price.replace(/[KSh,\s]/gi, '')).toLocaleString()}` : '-'}
                     </p>
                     <p className="text-xs text-dark-400">
                       {format(new Date(product.created_at), 'MMM d, HH:mm')}

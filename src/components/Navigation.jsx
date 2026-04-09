@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Menu, X, Search, ShoppingBag } from 'lucide-react';
+import { Menu, X, Search, ShoppingBag, MessageCircle } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'framer-motion';
 import logo from '../assets/logo.png';
@@ -90,18 +90,16 @@ const Navigation = ({ siteSettings }) => {
             </div>
 
             {/* Desktop CTA */}
-            <div className="hidden md:flex items-center space-x-4">
+            <div className="hidden md:flex items-center gap-4">
               <a
                 href={whatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-primary text-sm py-3 px-6"
+                className="group flex items-center gap-2 px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-green-500/30"
               >
-                Join WhatsApp
+                <MessageCircle size={18} className="group-hover:scale-110 transition-transform" />
+                <span>Join WhatsApp</span>
               </a>
-              <button className="text-accent hover:text-primary transition-colors">
-                <Search size={22} />
-              </button>
             </div>
 
             {/* Mobile Menu Button */}
@@ -139,9 +137,10 @@ const Navigation = ({ siteSettings }) => {
                   href={whatsapp}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn-primary block text-center mt-6"
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full transition-all duration-300"
                 >
-                  Join WhatsApp Community
+                  <MessageCircle size={20} />
+                  <span>Join WhatsApp Community</span>
                 </a>
               </div>
             </motion.div>

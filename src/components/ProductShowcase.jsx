@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { MessageCircle, Star } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MessageCircle, Star, X } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 const ASSETS_URL = import.meta.env.VITE_ASSETS_URL || 'http://localhost:3001';
@@ -10,6 +10,7 @@ const ProductShowcase = ({ siteSettings }) => {
   const waLink = whatsapp || 'https://chat.whatsapp.com/Gb8xGhuAacOJzY7cuMO5tK';
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   // Fallback static products if API is not available
   const fallbackProducts = [
@@ -181,7 +182,10 @@ const ProductShowcase = ({ siteSettings }) => {
               className="bg-white rounded-2xl shadow-lg overflow-hidden group border border-gray-100"
             >
               {/* Product Image */}
-              <div className={`relative h-64 bg-gradient-to-br ${product.gradient} overflow-hidden flex items-center justify-center`}>
+              <div 
+                className={`relative h-64 bg-gradient-to-br ${product.gradient} overflow-hidden flex items-center justify-center cursor-pointer`}
+                onClick={() => setSelectedProduct(product)}
+              >
                 {product.image ? (
                   <img
                     src={product.image}
@@ -196,6 +200,9 @@ const ProductShowcase = ({ siteSettings }) => {
                 <div className={`text-white/40 text-8xl font-serif ${product.image ? 'hidden' : 'flex'}`}>
                   {product.category.charAt(0)}
                 </div>
+
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" />
 
                 {/* Price Badge */}
                 <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm text-primary font-bold px-4 py-2 rounded-full shadow-md">
@@ -272,6 +279,88 @@ const ProductShowcase = ({ siteSettings }) => {
           </a>
         </motion.div>
       </div>
+
+      {/* Image Preview Modal */}
+      <AnimatePresence>
+        {selectedProduct && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            onClick={() => setSelectedProduct(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-4xl w-full max-h-[90vh] bg-white rounded-2xl overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="absolute top-4 right-4 z-10 p-2 bg-white/80 hover:bg-white rounded-full text-gray-700 hover:text-black transition-colors"
+              >
+                <X size={24} />
+              </button>
+
+              <div className="grid md:grid-cols-2">
+                {/* Image */}
+                <div className="bg-gray-100 h-[400px] md:h-[500px] flex items-center justify-center">
+                  {selectedProduct.image ? (
+                    <img
+                      src={selectedProduct.image}
+                      alt={selectedProduct.name}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <div className="text-8xl font-serif text-gray-300">
+                      {selectedProduct.category.charAt(0)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Details */}
+                <div className="p-8 flex flex-col justify-center">
+                  <span className="inline-block self-start px-3 py-1 bg-primary/20 text-primary text-sm font-medium rounded-full mb-4">
+                    {selectedProduct.category}
+                  </span>
+                  <h3 className="text-2xl font-bold text-secondary mb-4">
+                    {selectedProduct.name}
+                  </h3>
+                  <p className="text-3xl font-bold text-primary mb-4">
+                    {selectedProduct.price}
+                  </p>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="flex text-yellow-400">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          size={18}
+                          fill={i < Math.floor(selectedProduct.rating) ? 'currentColor' : 'none'}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-gray-600">({selectedProduct.reviews} reviews)</span>
+                  </div>
+                  <p className="text-gray-600 mb-6">
+                    {selectedProduct.description}
+                  </p>
+                  <a
+                    href={waLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 bg-primary hover:bg-yellow-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300"
+                  >
+                    <MessageCircle size={20} />
+                    Enquire on WhatsApp
+                  </a>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 };

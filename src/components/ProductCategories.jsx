@@ -140,36 +140,36 @@ const ProductCategories = ({ siteSettings, categories: apiCategories }) => {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.15,
+        staggerChildren: 0.1,
         delayChildren: 0.2,
       },
     },
   };
 
   const cardVariants = {
-    hidden: { opacity: 0, y: 50 },
+    hidden: { opacity: 0, y: 30 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.6, ease: 'easeOut' },
+      transition: { duration: 0.5, ease: 'easeOut' },
     },
   };
 
   return (
-    <section id="collections" className="section bg-gradient-to-b from-white to-gray-50">
+    <section id="collections" className="section bg-secondary">
       <div className="container-custom">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-20"
+          className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-secondary mb-6">
+          <h2 className="text-4xl md:text-5xl font-serif font-bold text-accent mb-4">
             Our Collections
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-            Curated luxury products designed to enhance your beauty and style
+          <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+            Explore our curated selection of premium beauty and lifestyle products
           </p>
         </motion.div>
 
@@ -178,7 +178,7 @@ const ProductCategories = ({ siteSettings, categories: apiCategories }) => {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
         >
           {categories.map((category) => {
             const IconComponent = ICON_MAP[category.icon] || Sparkles;
@@ -189,42 +189,45 @@ const ProductCategories = ({ siteSettings, categories: apiCategories }) => {
               <motion.div
                 key={category.id}
                 variants={cardVariants}
-                whileHover={{ y: -10, transition: { duration: 0.3 } }}
-                className="product-card group cursor-pointer"
+                whileHover={{ y: -8, transition: { duration: 0.3 } }}
+                className="group"
               >
-                <a href={category.link} target="_blank" rel="noopener noreferrer">
-                  <div className={`${bgColor} p-8 h-64 flex items-center justify-center relative overflow-hidden`}>
-                    <div className={`absolute w-48 h-48 rounded-full bg-gradient-to-br ${colorShade.from} ${colorShade.to} opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all duration-500`} />
-
-                    <IconComponent
-                      className={`relative z-10 w-24 h-24 group-hover:scale-110 transition-transform duration-300`}
-                      style={{ color: '#1A1A1A' }}
-                      size={96}
-                    />
-                  </div>
-
-                  <div className="p-6 bg-white">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="text-2xl font-serif font-bold text-secondary mb-2">
-                          {category.name}
-                        </h3>
-                        <p className="text-sm text-primary uppercase tracking-wider mb-3">
-                          {category.subtitle || category.name}
-                        </p>
-                        <p className="text-gray-600 leading-relaxed">
-                          {category.description}
-                        </p>
+                <a href={category.link} target="_blank" rel="noopener noreferrer" className="block h-full">
+                  <div className="relative h-full bg-dark-900 rounded-2xl overflow-hidden border border-dark-800 hover:border-primary-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/10">
+                    {/* Icon Section */}
+                    <div className={`${bgColor} p-10 flex items-center justify-center relative overflow-hidden`}>
+                      <div className={`absolute inset-0 bg-gradient-to-br ${colorShade.from} ${colorShade.to} opacity-0 group-hover:opacity-20 transition-opacity duration-500`} />
+                      <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-gradient-to-br from-primary/10 to-transparent rounded-full blur-2xl" />
+                      <div className="relative z-10 w-20 h-20 flex items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 group-hover:scale-110 transition-transform duration-300">
+                        <IconComponent
+                          className="text-secondary"
+                          size={48}
+                        />
                       </div>
                     </div>
 
-                    <div className="product-card-overlay flex items-center justify-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <MessageCircle className="text-white" size={32} />
-                        <span className="text-white font-semibold text-lg">
-                          Shop via WhatsApp
-                        </span>
+                    {/* Content */}
+                    <div className="p-6">
+                      <h3 className="text-xl font-bold text-accent mb-1 group-hover:text-primary transition-colors">
+                        {category.name}
+                      </h3>
+                      <p className="text-sm text-primary font-medium mb-3">
+                        {category.subtitle || category.name}
+                      </p>
+                      <p className="text-gray-400 text-sm leading-relaxed mb-4">
+                        {category.description}
+                      </p>
+                      
+                      <div className="flex items-center gap-2 text-primary text-sm font-medium">
+                        <MessageCircle size={16} />
+                        <span>Shop via WhatsApp</span>
+                        <span className="group-hover:translate-x-1 transition-transform">→</span>
                       </div>
+                    </div>
+
+                    {/* Corner accent */}
+                    <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden">
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-primary/20 to-transparent" />
                     </div>
                   </div>
                 </a>
@@ -234,15 +237,15 @@ const ProductCategories = ({ siteSettings, categories: apiCategories }) => {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="text-center mt-16"
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="text-center mt-12"
         >
           <a
             href="#products"
-            className="btn-primary inline-flex items-center gap-3 text-lg"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-primary hover:bg-yellow-600 text-white font-semibold rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-primary-500/30"
           >
             View All Products
           </a>

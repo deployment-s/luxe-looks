@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Truck, Shield, Clock, Award, MapPin } from 'lucide-react';
+import { Truck, Shield, Clock, Award, MapPin, MessageCircle } from 'lucide-react';
 
 const extractSrcFromIframe = (input) => {
   if (!input) return '';
@@ -123,10 +123,10 @@ const About = ({ siteSettings }) => {
                 href={whatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-primary inline-flex items-center gap-3"
+                className="group inline-flex items-center gap-3 px-8 py-4 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-green-500/30"
               >
-                Connect with Us
-                <Truck size={20} />
+                <MessageCircle size={22} className="group-hover:scale-110 transition-transform" />
+                <span>Connect with Us</span>
               </a>
             </div>
           </motion.div>

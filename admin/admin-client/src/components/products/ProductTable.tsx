@@ -203,14 +203,17 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                 </td>
                 <td className="table-cell">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-dark-800 flex items-center justify-center border border-dark-700">
+                    <div 
+                      className="w-12 h-12 rounded-lg overflow-hidden bg-dark-800 flex items-center justify-center border border-dark-700 cursor-pointer hover:ring-2 hover:ring-primary-500 hover:scale-110 transition-all duration-200"
+                      onClick={() => onPreview?.(product)}
+                      title="Click to preview"
+                    >
                       {product.image ? (
                         <img
                           src={product.image}
                           alt={product.name}
                           className="w-full h-full object-cover"
                           onError={(e) => {
-                            // If image fails to load, show placeholder
                             (e.target as HTMLImageElement).style.display = 'none';
                             (e.target as HTMLElement).nextElementSibling?.classList.remove('hidden');
                           }}

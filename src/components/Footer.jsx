@@ -117,10 +117,10 @@ const Footer = ({ siteSettings, categories: footerCategories = [] }) => {
               href={whatsapp}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-primary w-full flex items-center justify-center gap-3"
+              className="group flex items-center justify-center gap-2 w-full py-3 px-6 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-green-500/30"
             >
-              <MessageCircle size={20} />
-              Join Community
+              <MessageCircle size={20} className="group-hover:scale-110 transition-transform" />
+              <span>Join Community</span>
             </a>
           </div>
         </div>
