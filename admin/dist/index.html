@@ -11,12 +11,12 @@
     <script>
       (async () => {
         try {
-          const res = await fetch('http://localhost:3001/api/site');
+          const res = await fetch('/api/site');
           const data = await res.json();
           if (data.favicon) {
             const favicon = data.favicon.startsWith('http') 
               ? data.favicon 
-              : 'http://localhost:3001' + data.favicon;
+              : '' + data.favicon;
             document.querySelector('link[rel="icon"]').href = favicon;
           }
         } catch (e) {
@@ -24,7 +24,7 @@
         }
       })();
     </script>
-    <script type="module" crossorigin src="/admin/assets/index-CgUeF7Q4.js"></script>
+    <script type="module" crossorigin src="/admin/assets/index-DDc6u2OT.js"></script>
     <link rel="stylesheet" crossorigin href="/admin/assets/index-BC4Imj47.css">
   </head>
   <body>

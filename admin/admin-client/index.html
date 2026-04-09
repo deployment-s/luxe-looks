@@ -12,12 +12,12 @@
     <script>
       (async () => {
         try {
-          const res = await fetch('http://localhost:3001/api/site');
+          const res = await fetch('/api/site');
           const data = await res.json();
           if (data.favicon) {
             const favicon = data.favicon.startsWith('http') 
               ? data.favicon 
-              : 'http://localhost:3001' + data.favicon;
+              : '' + data.favicon;
             document.querySelector('link[rel="icon"]').href = favicon;
           }
         } catch (e) {

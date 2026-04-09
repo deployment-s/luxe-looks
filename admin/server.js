@@ -105,8 +105,8 @@ app.use(express.json({ limit: '10mb' }));
 const frontendPath = path.join(__dirname, '../luxe-looks/dist');
 if (fs.existsSync(frontendPath)) {
   app.use(express.static(frontendPath));
-  // Serve frontend index.html for all non-API routes (SPA fallback)
-  app.get(/^(?!\/api\/).*/, (req, res) => {
+  // Serve frontend index.html for all non-API and non-admin routes (SPA fallback)
+  app.get(/^(?!\/api\/)(?!\/admin).*/, (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
   });
 }

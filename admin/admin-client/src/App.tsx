@@ -53,12 +53,12 @@ const LoginPage = () => {
   React.useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await fetch('http://localhost:3001/api/site');
+        const res = await fetch('/api/site');
         const settings = await res.json();
         if (settings.logo) {
           const logoUrl = settings.logo.startsWith('http') 
             ? settings.logo 
-            : `http://localhost:3001${settings.logo}`;
+            : `/api/site${settings.logo}`;
           setLogo(logoUrl);
         }
         if (settings.site_name) {
@@ -86,7 +86,7 @@ const LoginPage = () => {
     setResetError('');
 
     try {
-      const res = await fetch('http://localhost:3001/api/users/reset-request', {
+      const res = await fetch('/api/users/reset-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: resetUsername }),
@@ -112,7 +112,7 @@ const LoginPage = () => {
     setResetError('');
 
     try {
-      const res = await fetch('http://localhost:3001/api/users/reset-password', {
+      const res = await fetch('/api/users/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: resetUsername, resetCode, newPassword }),

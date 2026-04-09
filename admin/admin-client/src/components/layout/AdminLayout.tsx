@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 const DEFAULT_LOGO = '/logo.png';
-const ASSETS_URL = 'http://localhost:3001';
+const ASSETS_URL = '';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },

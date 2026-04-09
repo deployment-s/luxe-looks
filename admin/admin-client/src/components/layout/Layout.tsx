@@ -5,7 +5,7 @@ import { Topbar } from './Topbar';
 import { Toaster } from 'react-hot-toast';
 import { settingsService } from '@/services/api';
 
-const ASSETS_URL = 'http://localhost:3001';
+const ASSETS_URL = '';
 
 export const Layout: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

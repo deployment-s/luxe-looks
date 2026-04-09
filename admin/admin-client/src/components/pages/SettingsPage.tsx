@@ -320,7 +320,7 @@ export const SettingsPage: React.FC = () => {
                       <div className="w-24 h-24 rounded-lg border-2 border-dark-700 bg-dark-800 flex items-center justify-center overflow-hidden">
                         {settings.logo ? (
                           <img 
-                            src={settings.logo.startsWith('http') ? settings.logo : `http://localhost:3001${settings.logo}`} 
+                            src={settings.logo.startsWith('http') ? settings.logo : `${settings.logo}`} 
                             alt="Logo" 
                             className="w-full h-full object-contain"
                           />
@@ -362,7 +362,7 @@ export const SettingsPage: React.FC = () => {
                       <div className="w-16 h-16 rounded-lg border-2 border-dark-700 bg-dark-800 flex items-center justify-center overflow-hidden">
                         {settings.favicon ? (
                           <img 
-                            src={settings.favicon.startsWith('http') ? settings.favicon : `http://localhost:3001${settings.favicon}`} 
+                            src={settings.favicon.startsWith('http') ? settings.favicon : `${settings.favicon}`} 
                             alt="Favicon" 
                             className="w-full h-full object-contain"
                           />
