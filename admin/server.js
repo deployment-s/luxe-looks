@@ -123,18 +123,6 @@ if (fs.existsSync(frontendPath)) {
   });
 }
 
-// Serve admin static files
-app.use('/admin/assets', express.static(path.join(__dirname, 'dist/assets')));
-app.use('/admin/logo.png', express.static(path.join(__dirname, 'dist/logo.png')));
-
-// Serve admin index.html for /admin routes
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
-app.get('/admin/*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
-
 // Serve uploads folder only if not using S3
 if (!isS3Configured()) {
   app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
