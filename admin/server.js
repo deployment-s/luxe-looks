@@ -101,6 +101,18 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '10mb' }));
 
+// Serve admin static files FIRST (before SPA fallback)
+app.use('/admin/assets', express.static(path.join(__dirname, 'dist/assets')));
+app.use('/admin/logo.png', express.static(path.join(__dirname, 'dist/logo.png')));
+
+// Serve admin index.html for /admin routes
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+app.get('/admin/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
 // Serve main frontend static files (from luxe-looks/dist)
 const frontendPath = path.join(__dirname, '../luxe-looks/dist');
 if (fs.existsSync(frontendPath)) {
