@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
@@ -16,7 +16,9 @@ import {
   History,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import logo from '/logo.png';
+
+const DEFAULT_LOGO = '/logo.png';
+const ASSETS_URL = 'http://localhost:3001';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -31,9 +33,32 @@ const navItems = [
 export const AdminLayout: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [logo, setLogo] = useState<string>(DEFAULT_LOGO);
+  const [siteName, setSiteName] = useState<string>('Luxe Looks');
   const { user, logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch(`${ASSETS_URL}/api/site`);
+        const settings = await res.json();
+        if (settings.logo) {
+          const logoUrl = settings.logo.startsWith('http') 
+            ? settings.logo 
+            : `${ASSETS_URL}${settings.logo}`;
+          setLogo(logoUrl);
+        }
+        if (settings.site_name) {
+          setSiteName(settings.site_name);
+        }
+      } catch (err) {
+        console.error('Failed to fetch settings:', err);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -66,8 +91,8 @@ export const AdminLayout: React.FC = () => {
           <div className="flex items-center gap-3 overflow-hidden">
             <img
               src={logo}
-              alt="Luxe Looks"
-              className={`object-contain ${sidebarCollapsed ? 'h-8' : 'h-10'}`}
+              alt={siteName}
+              className={`object-cover rounded-full ${sidebarCollapsed ? 'h-8 w-8' : 'h-10 w-10'}`}
             />
             <AnimatePresence mode="wait">
               {!sidebarCollapsed && (
@@ -77,7 +102,7 @@ export const AdminLayout: React.FC = () => {
                   exit={{ opacity: 0, x: 10 }}
                   className="font-serif text-xl font-bold text-primary-500 whitespace-nowrap"
                 >
-                  Luxe Admin
+                  {siteName}
                 </motion.span>
               )}
             </AnimatePresence>

@@ -13,11 +13,14 @@ import {
   Clock,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import logo from '/logo.png';
+
+const DEFAULT_LOGO = '/logo.png';
 
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  logo?: string;
+  siteName?: string;
 }
 
 const navItems = [
@@ -30,7 +33,7 @@ const navItems = [
   { to: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, logo = DEFAULT_LOGO, siteName = 'Luxe Looks' }) => {
   return (
     <motion.aside
       initial={false}
@@ -47,9 +50,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
               exit={{ opacity: 0 }}
               className="flex items-center gap-3"
             >
-              <img src={logo} alt="Luxe Looks" className="h-8 w-auto" />
+              <img src={logo} alt={siteName} className="h-8 w-auto rounded-full" />
               <span className="font-serif text-xl font-bold text-primary-500">
-                Luxe Looks
+                {siteName}
               </span>
             </motion.div>
           )}

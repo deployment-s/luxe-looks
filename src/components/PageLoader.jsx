@@ -2,35 +2,56 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import logo from '../assets/logo.png';
 
-const PageLoader = () => {
-  const [isLoading, setIsLoading] = useState(true);
+const ASSETS_URL = import.meta.env.VITE_ASSETS_URL || 'http://localhost:3001';
+
+const PageLoader = ({ siteSettings, isReady }) => {
+  const [showLoader, setShowLoader] = useState(true);
+
+  const siteName = siteSettings?.site_name || 'Luxe Looks';
+  const logoUrl = siteSettings?.logo || null;
+
+  const getLogoSrc = () => {
+    if (!logoUrl) return logo;
+    if (logoUrl.startsWith('http')) return logoUrl;
+    return logoUrl?.startsWith('http') ? logoUrl : logoUrl ? `${ASSETS_URL}${logoUrl}` : logo;
+  };
 
   useEffect(() => {
-    // Hide loader after page loads
+    // Wait for both minimum time AND settings to be ready
+    const minTime = 800;
     const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 800); // Show loader for at least 800ms
+      if (isReady) {
+        setShowLoader(false);
+      }
+    }, minTime);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [isReady]);
+
+  // When isReady becomes true, hide loader
+  useEffect(() => {
+    if (isReady) {
+      setShowLoader(false);
+    }
+  }, [isReady]);
 
   return (
     <AnimatePresence>
-      {isLoading && (
+      {showLoader && (
         <motion.div
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
           className="fixed inset-0 z-[100] bg-secondary flex items-center justify-center"
         >
-          <div className="text-center">
+          <div className="flex flex-col items-center">
             <motion.img
-              src={logo}
-              alt="Luxe Looks"
+              src={getLogoSrc()}
+              alt={siteName}
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.5 }}
-              className="w-32 h-32 object-contain mb-6"
+              className="w-32 h-32 object-cover mb-4 rounded-full"
             />
             <motion.div
               initial={{ opacity: 0 }}
@@ -38,7 +59,7 @@ const PageLoader = () => {
               transition={{ delay: 0.3 }}
               className="text-accent font-serif text-2xl tracking-wider"
             >
-              LUXE LOOKS
+              {siteName.toUpperCase()}
             </motion.div>
             <motion.div
               initial={{ width: 0 }}

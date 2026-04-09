@@ -36,6 +36,8 @@ const LoginPage = () => {
   const [resetError, setResetError] = React.useState('');
   const [resetSuccess, setResetSuccess] = React.useState(false);
   const [isResetting, setIsResetting] = React.useState(false);
+  const [logo, setLogo] = React.useState<string | null>(null);
+  const [siteName, setSiteName] = React.useState('Luxe Looks');
 
   const { login, isLoading, error, clearError } = useAuthStore();
   const navigate = useNavigate();
@@ -46,6 +48,27 @@ const LoginPage = () => {
   React.useEffect(() => {
     clearError();
   }, [clearError]);
+
+  React.useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/site');
+        const settings = await res.json();
+        if (settings.logo) {
+          const logoUrl = settings.logo.startsWith('http') 
+            ? settings.logo 
+            : `http://localhost:3001${settings.logo}`;
+          setLogo(logoUrl);
+        }
+        if (settings.site_name) {
+          setSiteName(settings.site_name);
+        }
+      } catch (err) {
+        console.error('Failed to fetch settings:', err);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,10 +229,14 @@ const LoginPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-400 to-primary-600 mb-4 shadow-lg shadow-primary-500/20">
-            <span className="text-3xl font-serif font-bold text-white">LL</span>
-          </div>
-          <h1 className="text-3xl font-serif font-bold text-white mb-2">Luxe Looks</h1>
+          {logo ? (
+            <img src={logo} alt={siteName} className="w-20 h-20 rounded-full mx-auto mb-4 object-cover" />
+          ) : (
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-400 to-primary-600 mb-4 shadow-lg shadow-primary-500/20">
+              <span className="text-3xl font-serif font-bold text-white">LL</span>
+            </div>
+          )}
+          <h1 className="text-3xl font-serif font-bold text-white mb-2">{siteName}</h1>
           <p className="text-dark-400">Admin Panel</p>
         </div>
 

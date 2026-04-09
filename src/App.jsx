@@ -47,6 +47,7 @@ function App() {
 
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -56,6 +57,7 @@ function App() {
       .then(([settingsData, categoriesData]) => {
         if (settingsData && Object.keys(settingsData).length > 0) {
           setSiteSettings(prev => ({ ...prev, ...settingsData }));
+          setIsSettingsLoaded(true);
         }
         if (Array.isArray(categoriesData)) {
           setCategories(categoriesData);
@@ -68,7 +70,7 @@ function App() {
   return (
     <HelmetProvider>
       <div className="min-h-screen">
-        <PageLoader />
+        <PageLoader siteSettings={siteSettings} isReady={isSettingsLoaded} />
         <Helmet>
           <title>Luxe Looks Beauty & Cosmetics KE | Premium Beauty in Kenya</title>
           <meta
