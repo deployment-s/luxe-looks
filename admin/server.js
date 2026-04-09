@@ -119,17 +119,9 @@ app.get('/admin/*', (req, res) => {
 
 // Serve main frontend static files (from luxe-looks/dist)
 const frontendPath = path.join(__dirname, '../luxe-looks/dist');
+console.log('Frontend path:', frontendPath, 'exists:', fs.existsSync(frontendPath));
 if (fs.existsSync(frontendPath)) {
   app.use(express.static(frontendPath));
-  
-  // SPA fallback - serve frontend index.html for non-API, non-admin routes
-  app.use((req, res, next) => {
-    const path = req.path;
-    if (path.startsWith('/api/') || path.startsWith('/admin')) {
-      return next();
-    }
-    res.sendFile(path.join(frontendPath, 'index.html'));
-  });
 }
 
 // Serve uploads folder only if not using S3
@@ -2667,4 +2659,10 @@ const server = app.listen(PORT, () => {
 module.exports = app;
   console.log(`API endpoint: http://localhost:${PORT}/api/products`);
   console.log(`Admin panel: http://localhost:${PORT}/admin`);
+});
+
+// Catch-all for debugging unmatched routes
+app.use((req, res) => {
+  console.log('Unhandled route:', req.method, req.path);
+  res.status(404).send('Not Found: ' + req.path);
 });
