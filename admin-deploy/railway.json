@@ -1,0 +1,9 @@
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "npm install && node server.js"
+  },
+  "deploy": {
+    "numReplicas": 1
+  }
+}
