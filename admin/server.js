@@ -101,24 +101,33 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '10mb' }));
 
-// Serve admin static files FIRST (before SPA fallback)
-app.use('/admin/assets', express.static(path.join(__dirname, 'dist/assets')));
-app.use('/admin/logo.png', express.static(path.join(__dirname, 'dist/logo.png')));
+// Serve admin static files FIRST
+const adminDistPath = path.join(__dirname, 'dist');
+console.log('Admin dist path:', adminDistPath, 'exists:', fs.existsSync(adminDistPath));
+app.use('/admin/assets', express.static(path.join(adminDistPath, 'assets')));
+app.use('/admin/logo.png', express.static(path.join(adminDistPath, 'logo.png')));
 
-// Serve admin index.html for /admin routes
+// Serve admin index.html for /admin routes - MUST be before any catch-all
 app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  console.log('Serving /admin index');
+  res.sendFile(path.join(adminDistPath, 'index.html'));
 });
 app.get('/admin/*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  console.log('Serving /admin/* index:', req.path);
+  res.sendFile(path.join(adminDistPath, 'index.html'));
 });
 
 // Serve main frontend static files (from luxe-looks/dist)
 const frontendPath = path.join(__dirname, '../luxe-looks/dist');
 if (fs.existsSync(frontendPath)) {
   app.use(express.static(frontendPath));
-  // Serve frontend index.html for all non-API and non-admin routes (SPA fallback)
-  app.get(/^(?!\/api\/)(?!\/admin).*/, (req, res) => {
+  
+  // SPA fallback - serve frontend index.html for non-API, non-admin routes
+  app.use((req, res, next) => {
+    const path = req.path;
+    if (path.startsWith('/api/') || path.startsWith('/admin')) {
+      return next();
+    }
     res.sendFile(path.join(frontendPath, 'index.html'));
   });
 }
