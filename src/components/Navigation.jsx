@@ -121,9 +121,10 @@ const Navigation = ({ siteSettings }) => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-secondary/98 backdrop-blur-lg border-t border-gray-800 absolute left-0 right-0"
+              className="md:hidden bg-secondary/98 backdrop-blur-lg border-t border-gray-800 fixed top-[52px] left-0 right-0 z-40"
+              style={{ top: isScrolled ? '44px' : 'auto' }}
             >
-              <div className="container-custom py-6 space-y-4">
+              <div className="py-4 px-4 space-y-4">
                 {navLinks.map((link) => (
                   <a
                     key={link.name}
