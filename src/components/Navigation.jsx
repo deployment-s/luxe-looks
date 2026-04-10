@@ -51,19 +51,19 @@ const Navigation = ({ siteSettings }) => {
       </Helmet>
 
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 overflow-hidden ${
           isScrolled
             ? 'bg-secondary/95 backdrop-blur-md py-2 md:py-3 shadow-lg'
             : 'bg-transparent py-4 md:py-6'
         }`}
       >
         <div className="container-custom">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between w-full">
             {/* Logo & Site Name */}
             <a
               href="#home"
               onClick={(e) => scrollToSection(e, '#home')}
-              className="flex items-center gap-2 md:gap-3"
+              className="flex items-center gap-2 md:gap-3 min-w-0"
             >
               <img
                 src={getLogoSrc()}

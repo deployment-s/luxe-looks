@@ -72,10 +72,11 @@ function App() {
 
   return (
     <HelmetProvider>
-      <div className="min-h-screen">
+      <div className="min-h-screen overflow-x-hidden">
         <PageLoader siteSettings={siteSettings} isReady={isSettingsLoaded} />
         <Helmet>
           <title>Luxe Looks Beauty & Cosmetics KE | Premium Beauty in Kenya</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
           <meta
             name="description"
             content="Luxe Looks Beauty & Cosmetics KE - Your destination for authentic designer perfumes, human hair, and luxury accessories in Nairobi. Premium beauty products delivered across Kenya."
