@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Search, ShoppingBag, MessageCircle } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,6 +10,8 @@ const ASSETS_URL = import.meta.env.VITE_ASSETS_URL || '';
 const Navigation = ({ siteSettings }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  const isCategoryPage = location.pathname.startsWith('/category/');
   const whatsapp = siteSettings?.whatsapp || 'https://chat.whatsapp.com/Gb8xGhuAacOJzY7cuMO5tK';
   const siteName = siteSettings?.site_name || 'Luxe Looks';
   const logoUrl = siteSettings?.logo || null;
@@ -28,19 +31,30 @@ const Navigation = ({ siteSettings }) => {
   }, []);
 
   const navLinks = [
-    { name: 'Home', href: '#home' },
-    { name: 'Collections', href: '#collections' },
-    { name: 'About', href: '#about' },
-    { name: 'Reviews', href: '#reviews' },
-    { name: 'Contact', href: '#contact' },
+    { name: 'Home', href: isCategoryPage ? '/' : '#home' },
+    { name: 'Collections', href: isCategoryPage ? '/#collections' : '#collections' },
+    { name: 'About', href: isCategoryPage ? '/#about' : '#about' },
+    { name: 'Reviews', href: isCategoryPage ? '/#reviews' : '#reviews' },
+    { name: 'Contact', href: isCategoryPage ? '/#contact' : '#contact' },
   ];
 
   const scrollToSection = (e, href) => {
     e.preventDefault();
+    if (href.startsWith('/')) {
+      window.location.href = href;
+      return;
+    }
     const element = document.querySelector(href);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
       setIsMobileMenuOpen(false);
+    }
+  };
+
+  const handleLogoClick = (e) => {
+    if (isCategoryPage) {
+      e.preventDefault();
+      window.location.href = '/';
     }
   };
 
@@ -61,8 +75,8 @@ const Navigation = ({ siteSettings }) => {
           <div className="flex items-center justify-between w-full">
             {/* Logo & Site Name */}
             <a
-              href="#home"
-              onClick={(e) => scrollToSection(e, '#home')}
+              href={isCategoryPage ? '/' : '#home'}
+              onClick={isCategoryPage ? handleLogoClick : (e) => scrollToSection(e, '#home')}
               className="flex items-center gap-2 md:gap-3 min-w-0"
             >
               <img
