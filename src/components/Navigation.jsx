@@ -118,10 +118,11 @@ const Navigation = ({ siteSettings }) => {
         <AnimatePresence>
           {isMobileMenuOpen && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-secondary/98 backdrop-blur-lg border-t border-gray-800 fixed top-[52px] left-0 right-0 z-40"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden bg-secondary/98 backdrop-blur-lg border-t border-gray-800 fixed top-[52px] left-0 right-0 z-40 pointer-events-auto"
               style={{ top: isScrolled ? '44px' : 'auto' }}
             >
               <div className="py-4 px-4 space-y-4">
@@ -129,8 +130,15 @@ const Navigation = ({ siteSettings }) => {
                   <a
                     key={link.name}
                     href={link.href}
-                    onClick={(e) => scrollToSection(e, link.href)}
-                    className="block text-accent hover:text-primary font-medium py-2 text-lg"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const element = document.querySelector(link.href);
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth' });
+                      }
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="block text-accent hover:text-primary font-medium py-2 text-lg pointer-events-auto"
                   >
                     {link.name}
                   </a>
@@ -139,7 +147,7 @@ const Navigation = ({ siteSettings }) => {
                   href={whatsapp}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full transition-all duration-300 text-sm"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full transition-all duration-300 text-sm pointer-events-auto"
                 >
                   <MessageCircle size={16} />
                   <span>Join WhatsApp</span>
