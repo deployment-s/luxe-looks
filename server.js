@@ -39,11 +39,14 @@ app.use(express.static(path.join(__dirname, 'dist')));
 // Categories (public)
 app.get('/api/categories', async (req, res) => {
   try {
+    console.log('Fetching categories from database...');
     try {
       await pool.query('SELECT is_active FROM categories LIMIT 1');
       const result = await pool.query('SELECT * FROM categories WHERE is_active = true ORDER BY sort_order, name');
+      console.log('Found active categories:', result.rows.length, result.rows.map(r => ({ name: r.name, is_active: r.is_active })));
       res.json({ items: result.rows });
     } catch {
+      console.log('is_active column not found, fetching all categories');
       const result = await pool.query('SELECT * FROM categories ORDER BY sort_order, name');
       res.json({ items: result.rows });
     }
