@@ -39,8 +39,16 @@ app.use(express.static(path.join(__dirname, 'dist')));
 // Categories (public)
 app.get('/api/categories', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM categories WHERE is_active = true ORDER BY sort_order, name');
-    res.json(result.rows);
+    // Check if is_active column exists
+    try {
+      await pool.query('SELECT is_active FROM categories LIMIT 1');
+      const result = await pool.query('SELECT * FROM categories WHERE is_active = true ORDER BY sort_order, name');
+      res.json(result.rows);
+    } catch {
+      // Fallback if is_active doesn't exist
+      const result = await pool.query('SELECT * FROM categories ORDER BY sort_order, name');
+      res.json(result.rows);
+    }
   } catch (err) { 
     console.error('/api/categories error:', err.message);
     res.status(500).json({ error: err.message }); 
@@ -50,23 +58,9 @@ app.get('/api/categories', async (req, res) => {
 // Products (public - only active category products)
 app.get('/api/products', async (req, res) => {
   try {
-    const { search, category } = req.query;
-    let query = `
-      SELECT p.* FROM products p 
-      JOIN categories c ON p.category = c.name 
-      WHERE c.is_active = true AND p.status = 'published'
-    `;
-    const params = [];
-    if (search) {
-      query += ' AND (p.name ILIKE $1 OR p.description ILIKE $1)';
-      params.push(`%${search}%`);
-    }
-    if (category) {
-      query += params.length ? ' AND p.category = $' + (params.length + 1) : ' AND p.category = $1';
-      params.push(category);
-    }
-    query += ' ORDER BY p.created_at DESC';
-    const result = await pool.query(query, params);
+    console.log('Fetching products from database...');
+    const result = await pool.query('SELECT * FROM products WHERE status = $1 ORDER BY created_at DESC', ['published']);
+    console.log('Found products:', result.rows.length);
     res.json(result.rows);
   } catch (err) { 
     console.error('/api/products error:', err.message);
