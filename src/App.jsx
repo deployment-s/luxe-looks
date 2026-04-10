@@ -76,14 +76,7 @@ function App() {
     <HelmetProvider>
       <Routes>
         <Route path="/category/:slug" element={
-          <div className="min-h-screen overflow-x-hidden">
-            <PageLoader siteSettings={siteSettings} isReady={isSettingsLoaded} />
-            <Navigation siteSettings={siteSettings} />
-            <CategoryPage siteSettings={siteSettings} />
-            <Footer siteSettings={siteSettings} categories={categories} />
-            <FloatingWhatsApp siteSettings={siteSettings} />
-            <BackToTop />
-          </div>
+          <CategoryPage siteSettings={siteSettings} categories={categories} />
         } />
         <Route path="*" element={
           <div className="min-h-screen overflow-x-hidden">
