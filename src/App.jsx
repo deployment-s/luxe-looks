@@ -52,14 +52,17 @@ function App() {
   useEffect(() => {
     Promise.all([
       fetch(`${API_URL}/site`).then(res => res.json()),
-      fetch(`${API_URL}/categories?active=true`).then(res => res.json())
+      fetch(`${API_URL}/categories`).then(res => res.json())
     ])
       .then(([settingsData, categoriesData]) => {
         if (settingsData && Object.keys(settingsData).length > 0) {
           setSiteSettings(prev => ({ ...prev, ...settingsData }));
           setIsSettingsLoaded(true);
         }
-        if (Array.isArray(categoriesData)) {
+        // Handle both { items: [] } and [] formats
+        if (categoriesData && categoriesData.items) {
+          setCategories(categoriesData.items);
+        } else if (Array.isArray(categoriesData)) {
           setCategories(categoriesData);
         }
       })
