@@ -7,6 +7,6 @@
   },
   "deploy": {
     "numReplicas": 1,
-    "startCommand": "npx serve dist -l $PORT -s"
+    "startCommand": "node server.js"
   }
 }
