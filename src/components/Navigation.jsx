@@ -53,8 +53,8 @@ const Navigation = ({ siteSettings }) => {
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
           isScrolled
-            ? 'bg-secondary/95 backdrop-blur-md py-3 shadow-lg'
-            : 'bg-transparent py-6'
+            ? 'bg-secondary/95 backdrop-blur-md py-2 md:py-3 shadow-lg'
+            : 'bg-transparent py-4 md:py-6'
         }`}
       >
         <div className="container-custom">
@@ -63,20 +63,20 @@ const Navigation = ({ siteSettings }) => {
             <a
               href="#home"
               onClick={(e) => scrollToSection(e, '#home')}
-              className="flex items-center gap-3"
+              className="flex items-center gap-2 md:gap-3"
             >
               <img
                 src={getLogoSrc()}
                 alt={siteName}
-                className="h-12 md:h-14 w-auto rounded-full"
+                className="h-8 w-8 md:h-10 lg:h-12 md:w-10 lg:w-auto w-auto rounded-full object-contain"
               />
-              <span className="hidden lg:block text-xl font-serif font-bold text-primary tracking-wide">
+              <span className="hidden md:block lg:block text-base md:text-lg lg:text-xl font-serif font-bold text-primary tracking-wide">
                 {siteName}
               </span>
             </a>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-8">
+            <div className="hidden lg:flex items-center space-x-6 lg:space-x-8">
               {navLinks.map((link) => (
                 <a
                   key={link.name}
@@ -90,25 +90,26 @@ const Navigation = ({ siteSettings }) => {
             </div>
 
             {/* Desktop CTA */}
-            <div className="hidden md:flex items-center gap-4">
+            <div className="hidden lg:flex items-center gap-3 lg:gap-4">
               <a
                 href={whatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center gap-2 px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-green-500/30"
+                className="group flex items-center gap-2 px-4 lg:px-5 py-2 lg:py-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full transition-all duration-300 hover:shadow-lg hover:shadow-green-500/30 text-sm lg:text-base"
               >
-                <MessageCircle size={18} className="group-hover:scale-110 transition-transform" />
-                <span>Join WhatsApp</span>
+                <MessageCircle size={16} lg:size={18} className="group-hover:scale-110 transition-transform" />
+                <span className="hidden lg:inline">Join WhatsApp</span>
+                <span className="lg:hidden">WhatsApp</span>
               </a>
             </div>
 
             {/* Mobile Menu Button */}
             <button
-              className="md:hidden text-accent"
+              className="md:hidden text-accent p-1"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle menu"
             >
-              {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
         </div>
@@ -120,7 +121,7 @@ const Navigation = ({ siteSettings }) => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden bg-secondary/98 backdrop-blur-lg border-t border-gray-800"
+              className="md:hidden bg-secondary/98 backdrop-blur-lg border-t border-gray-800 absolute left-0 right-0"
             >
               <div className="container-custom py-6 space-y-4">
                 {navLinks.map((link) => (
