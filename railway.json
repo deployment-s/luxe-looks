@@ -7,6 +7,6 @@
   },
   "deploy": {
     "numReplicas": 1,
-    "startCommand": "npx vite preview --port $PORT --host"
+    "startCommand": "node server.js"
   }
 }
