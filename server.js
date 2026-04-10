@@ -69,18 +69,32 @@ app.get('/api/products', async (req, res) => {
     } catch {
       useActiveFilter = false;
     }
+
+    const category = req.query.category;
     
     let query;
+    let params = [];
+    
     if (useActiveFilter) {
+      let whereClause = "WHERE p.status = 'published' AND p.is_active = true AND c.is_active = true";
+      if (category) {
+        whereClause += " AND p.category ILIKE $1";
+        params = [category];
+      }
       query = `SELECT p.* FROM products p 
                JOIN categories c ON p.category = c.name 
-               WHERE p.status = 'published' AND p.is_active = true AND c.is_active = true
+               ${whereClause}
                ORDER BY p.created_at DESC`;
     } else {
-      query = `SELECT * FROM products WHERE status = 'published' ORDER BY created_at DESC`;
+      let whereClause = "WHERE status = 'published'";
+      if (category) {
+        whereClause += " AND category ILIKE $1";
+        params = [category];
+      }
+      query = `SELECT * FROM products ${whereClause} ORDER BY created_at DESC`;
     }
     
-    const result = await pool.query(query);
+    const result = await pool.query(query, params);
     console.log('Found products:', result.rows.length);
     res.json({ items: result.rows });
   } catch (err) { 

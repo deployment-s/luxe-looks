@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { ShoppingBag, Watch, Gem, Sparkles, Heart, MessageCircle, Palette, Crown, Droplets, Scissors, Feather, Baby, Glasses, Umbrella, Sun, Anchor, Zap } from 'lucide-react';
 
 const ICON_MAP = {
@@ -130,10 +131,10 @@ const ProductCategories = ({ siteSettings, categories: apiCategories }) => {
   const categories = (apiCategories && apiCategories.length > 0) 
     ? apiCategories.map(cat => ({
         ...cat,
-        link: waLink,
+        link: `/category/${cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-')}`,
         icon: cat.icon?.toLowerCase() || 'sparkles',
       }))
-    : DEFAULT_CATEGORIES.map(cat => ({ ...cat, link: waLink }));
+    : DEFAULT_CATEGORIES.map(cat => ({ ...cat, link: '/#' }));
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -192,7 +193,7 @@ const ProductCategories = ({ siteSettings, categories: apiCategories }) => {
                 whileHover={{ y: -8, transition: { duration: 0.3 } }}
                 className="group"
               >
-                <a href={category.link} target="_blank" rel="noopener noreferrer" className="block h-full">
+                <Link to={category.link} className="block h-full">
                   <div className="relative h-full bg-dark-900 rounded-2xl overflow-hidden border border-dark-800 hover:border-primary-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/10">
                     {/* Icon Section */}
                     <div className={`${bgColor} p-10 flex items-center justify-center relative overflow-hidden`}>
@@ -230,7 +231,7 @@ const ProductCategories = ({ siteSettings, categories: apiCategories }) => {
                       <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-primary/20 to-transparent" />
                     </div>
                   </div>
-                </a>
+                </Link>
               </motion.div>
             );
           })}
