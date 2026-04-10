@@ -122,8 +122,8 @@ const Navigation = ({ siteSettings }) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="md:hidden bg-secondary/98 backdrop-blur-lg border-t border-gray-800 fixed top-[52px] left-0 right-0 z-40 pointer-events-auto"
-              style={{ top: isScrolled ? '44px' : 'auto' }}
+              className="md:hidden bg-secondary/98 backdrop-blur-lg border-t border-gray-800 fixed left-0 right-0 z-40"
+              style={{ top: '56px' }}
             >
               <div className="py-4 px-4 space-y-4">
                 {navLinks.map((link) => (
@@ -138,7 +138,7 @@ const Navigation = ({ siteSettings }) => {
                       }
                       setIsMobileMenuOpen(false);
                     }}
-                    className="block text-accent hover:text-primary font-medium py-2 text-lg pointer-events-auto"
+                    className="block text-accent hover:text-primary font-medium py-2 text-lg"
                   >
                     {link.name}
                   </a>
@@ -147,7 +147,7 @@ const Navigation = ({ siteSettings }) => {
                   href={whatsapp}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full transition-all duration-300 text-sm pointer-events-auto"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full transition-all duration-300 text-sm"
                 >
                   <MessageCircle size={16} />
                   <span>Join WhatsApp</span>
