@@ -53,11 +53,31 @@ app.get('/api/categories', async (req, res) => {
   }
 });
 
-// Products (public - only active category products)
+// Products (public - only active category products and active products)
 app.get('/api/products', async (req, res) => {
   try {
     console.log('Fetching products from database...');
-    const result = await pool.query('SELECT * FROM products WHERE status = $1 ORDER BY created_at DESC', ['published']);
+    
+    // Check if is_active columns exist
+    let useActiveFilter = true;
+    try {
+      await pool.query('SELECT is_active FROM categories LIMIT 1');
+      await pool.query('SELECT is_active FROM products LIMIT 1');
+    } catch {
+      useActiveFilter = false;
+    }
+    
+    let query;
+    if (useActiveFilter) {
+      query = `SELECT p.* FROM products p 
+               JOIN categories c ON p.category = c.name 
+               WHERE p.status = 'published' AND p.is_active = true AND c.is_active = true
+               ORDER BY p.created_at DESC`;
+    } else {
+      query = `SELECT * FROM products WHERE status = 'published' ORDER BY created_at DESC`;
+    }
+    
+    const result = await pool.query(query);
     console.log('Found products:', result.rows.length);
     res.json({ items: result.rows });
   } catch (err) { 
