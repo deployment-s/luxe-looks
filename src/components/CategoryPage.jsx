@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ChevronLeft, MessageCircle, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, MessageCircle, Sparkles, X, ZoomIn } from 'lucide-react';
 import Navigation from './Navigation';
 import Footer from './Footer';
 import FloatingWhatsApp from './FloatingWhatsApp';
@@ -33,8 +33,17 @@ const CategoryPage = ({ siteSettings, categories }) => {
   const [category, setCategory] = useState(null);
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState(null);
   const { whatsapp = '' } = siteSettings || {};
   const waLink = whatsapp || 'https://chat.whatsapp.com/Gb8xGhuAacOJzY7cuMO5tK';
+
+  const formatPrice = (price) => {
+    if (!price) return 'KSh 0';
+    const cleanPrice = price.replace(/[KSh\s,]/g, '');
+    const num = parseFloat(cleanPrice);
+    if (isNaN(num)) return `KSh ${price}`;
+    return `KSh ${num.toLocaleString()}`;
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -167,11 +176,20 @@ const CategoryPage = ({ siteSettings, categories }) => {
                 >
                   <div className="aspect-[4/5] relative overflow-hidden bg-dark-800">
                     {product.image ? (
-                      <img 
-                        src={product.image} 
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
+                      <>
+                        <img 
+                          src={product.image} 
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer"
+                          onClick={() => setSelectedImage(product.image)}
+                        />
+                        <div 
+                          className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                          onClick={() => setSelectedImage(product.image)}
+                        >
+                          <ZoomIn className="w-8 h-8 text-white" />
+                        </div>
+                      </>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-500">
                         <Sparkles className="w-12 h-12" />
@@ -188,7 +206,7 @@ const CategoryPage = ({ siteSettings, categories }) => {
                       {product.name}
                     </h3>
                     <p className="text-primary font-bold text-xl mb-4">
-                      {product.price}
+                      {formatPrice(product.price)}
                     </p>
                     <a
                       href={waLink}
@@ -210,6 +228,34 @@ const CategoryPage = ({ siteSettings, categories }) => {
       <Footer siteSettings={siteSettings} categories={categories} />
       <FloatingWhatsApp siteSettings={siteSettings} />
       <BackToTop />
+
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setSelectedImage(null)}
+          >
+            <button
+              className="absolute top-4 right-4 text-white hover:text-primary p-2"
+              onClick={() => setSelectedImage(null)}
+            >
+              <X size={32} />
+            </button>
+            <motion.img
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              src={selectedImage}
+              alt="Preview"
+              className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
