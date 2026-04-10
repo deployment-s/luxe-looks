@@ -39,15 +39,13 @@ app.use(express.static(path.join(__dirname, 'dist')));
 // Categories (public)
 app.get('/api/categories', async (req, res) => {
   try {
-    // Check if is_active column exists
     try {
       await pool.query('SELECT is_active FROM categories LIMIT 1');
       const result = await pool.query('SELECT * FROM categories WHERE is_active = true ORDER BY sort_order, name');
-      res.json(result.rows);
+      res.json({ items: result.rows });
     } catch {
-      // Fallback if is_active doesn't exist
       const result = await pool.query('SELECT * FROM categories ORDER BY sort_order, name');
-      res.json(result.rows);
+      res.json({ items: result.rows });
     }
   } catch (err) { 
     console.error('/api/categories error:', err.message);
@@ -61,7 +59,7 @@ app.get('/api/products', async (req, res) => {
     console.log('Fetching products from database...');
     const result = await pool.query('SELECT * FROM products WHERE status = $1 ORDER BY created_at DESC', ['published']);
     console.log('Found products:', result.rows.length);
-    res.json(result.rows);
+    res.json({ items: result.rows });
   } catch (err) { 
     console.error('/api/products error:', err.message);
     res.status(500).json({ error: err.message }); 
@@ -71,7 +69,7 @@ app.get('/api/products', async (req, res) => {
 // Reviews (public)
 app.get('/api/reviews', async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM reviews WHERE status = 'approved' ORDER BY created_at DESC LIMIT 20");
+    const result = await pool.query("SELECT * FROM reviews ORDER BY created_at DESC LIMIT 20");
     res.json(result.rows);
   } catch (err) { 
     console.error('/api/reviews error:', err.message);
