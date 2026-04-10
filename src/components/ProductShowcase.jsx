@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Star, X } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-const ASSETS_URL = import.meta.env.VITE_ASSETS_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
+const ASSETS_URL = import.meta.env.VITE_ASSETS_URL || '';
 
 const ProductShowcase = ({ siteSettings }) => {
   const { whatsapp = '' } = siteSettings || {};

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import logo from '../assets/logo.png';
 
-const ASSETS_URL = import.meta.env.VITE_ASSETS_URL || 'http://localhost:3001';
+const ASSETS_URL = import.meta.env.VITE_ASSETS_URL || '';
 
 const PageLoader = ({ siteSettings, isReady }) => {
   const [showLoader, setShowLoader] = useState(true);

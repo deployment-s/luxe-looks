@@ -2,7 +2,7 @@ import { Heart, Camera, Video, MessageCircle } from 'lucide-react';
 import logo from '../assets/logo.png';
 import PaymentMethods from './PaymentMethods';
 
-const ASSETS_URL = import.meta.env.VITE_ASSETS_URL || 'http://localhost:3001';
+const ASSETS_URL = import.meta.env.VITE_ASSETS_URL || '';
 
 const Footer = ({ siteSettings, categories: footerCategories = [] }) => {
   const currentYear = new Date().getFullYear();

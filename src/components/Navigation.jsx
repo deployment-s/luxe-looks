@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'framer-motion';
 import logo from '../assets/logo.png';
 
-const ASSETS_URL = import.meta.env.VITE_ASSETS_URL || 'http://localhost:3001';
+const ASSETS_URL = import.meta.env.VITE_ASSETS_URL || '';
 
 const Navigation = ({ siteSettings }) => {
   const [isScrolled, setIsScrolled] = useState(false);
