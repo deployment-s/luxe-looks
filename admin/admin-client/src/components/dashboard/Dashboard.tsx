@@ -82,7 +82,7 @@ export const Dashboard: React.FC = () => {
     {
       title: 'Total Products',
       value: String(displayStats.totalProducts),
-      change: `${Number(displayStats.changes.products) >= 0 ? '+' : ''}${displayStats.changes.products}%`,
+      change: displayStats.changes.products !== '0' ? `${Number(displayStats.changes.products) >= 0 ? '+' : ''}${displayStats.changes.products}%` : '',
       trend: Number(displayStats.changes.products) >= 0 ? 'up' : 'down',
       icon: Package,
       color: 'bg-blue-500',
@@ -90,7 +90,7 @@ export const Dashboard: React.FC = () => {
     {
       title: 'Categories',
       value: String(displayStats.totalCategories),
-      change: `${displayStats.changes.categories >= 0 ? '+' : ''}${displayStats.changes.categories}`,
+      change: displayStats.changes.categories !== 0 ? `${displayStats.changes.categories >= 0 ? '+' : ''}${displayStats.changes.categories}` : '',
       trend: displayStats.changes.categories >= 0 ? 'up' : 'down',
       icon: Tag,
       color: 'bg-purple-500',
@@ -98,7 +98,7 @@ export const Dashboard: React.FC = () => {
     {
       title: 'Average Rating',
       value: displayStats.averageRating,
-      change: `${Number(displayStats.changes.rating) >= 0 ? '+' : ''}${displayStats.changes.rating}`,
+      change: displayStats.changes.rating !== '0' ? `${Number(displayStats.changes.rating) >= 0 ? '+' : ''}${displayStats.changes.rating}` : '',
       trend: Number(displayStats.changes.rating) >= 0 ? 'up' : 'down',
       icon: Star,
       color: 'bg-yellow-500',
@@ -106,7 +106,7 @@ export const Dashboard: React.FC = () => {
     {
       title: 'Total Reviews',
       value: displayStats.totalReviews.toLocaleString(),
-      change: `${displayStats.changes.reviews >= 0 ? '+' : ''}${displayStats.changes.reviews}`,
+      change: displayStats.changes.reviews !== 0 ? `${displayStats.changes.reviews >= 0 ? '+' : ''}${displayStats.changes.reviews}` : '',
       trend: displayStats.changes.reviews >= 0 ? 'up' : 'down',
       icon: MessageSquare,
       color: 'bg-green-500',
@@ -185,7 +185,7 @@ export const Dashboard: React.FC = () => {
                         stat.trend === 'up' ? 'text-green-400' : 'text-red-400'
                       }`}
                     >
-                      {stat.change}
+                      {stat.change || '\u00A0'}
                     </p>
                   </div>
                   <div className={`${stat.color} p-3 rounded-lg`}>

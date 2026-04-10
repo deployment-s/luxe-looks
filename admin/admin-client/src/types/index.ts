@@ -16,6 +16,7 @@ export interface Product {
   rating: number;
   reviews: number;
   status: ProductStatus;
+  is_active?: boolean;
   meta_title?: string;
   meta_description?: string;
   created_at: string;

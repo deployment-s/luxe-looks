@@ -34,12 +34,22 @@ console.log('Admin dist path:', adminDistPath, 'exists:', fs.existsSync(adminDis
 
 // Serve at root (Railway deploys at root, not /admin)
 app.use('/assets', express.static(path.join(adminDistPath, 'assets')));
+app.use('/admin/assets', express.static(path.join(adminDistPath, 'assets')));
 app.use('/logo.png', express.static(path.join(adminDistPath, 'logo.png')));
 app.use('/favicon.png', express.static(path.join(adminDistPath, 'favicon.svg')));
+app.use('/favicon.svg', express.static(path.join(adminDistPath, 'favicon.svg')));
 
-// Admin SPA at root (specific routes, not wildcard)
+// Admin SPA at root (for Railway)
 app.get('/', (req, res) => {
   console.log('GET /');
+  res.sendFile(path.join(adminDistPath, 'index.html'));
+});
+
+// Admin SPA at /admin (for local development)
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(adminDistPath, 'index.html'));
+});
+app.get('/admin/*', (req, res) => {
   res.sendFile(path.join(adminDistPath, 'index.html'));
 });
 
@@ -55,8 +65,10 @@ pool.query('SELECT NOW()', (err, res) => {
 
 // Create tables
 pool.query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username VARCHAR(255) UNIQUE NOT NULL, password TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
-pool.query(`CREATE TABLE IF NOT EXISTS products (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, category VARCHAR(255) NOT NULL, price TEXT NOT NULL, price_value REAL, description TEXT, image TEXT, rating REAL DEFAULT 4.0, reviews INTEGER DEFAULT 0, status VARCHAR(50) DEFAULT 'published', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+pool.query(`CREATE TABLE IF NOT EXISTS products (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, category VARCHAR(255) NOT NULL, price TEXT NOT NULL, price_value REAL, description TEXT, image TEXT, rating REAL DEFAULT 4.0, reviews INTEGER DEFAULT 0, status VARCHAR(50) DEFAULT 'published', is_active BOOLEAN DEFAULT true, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+pool.query(`ALTER TABLE products ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`);
 pool.query(`CREATE TABLE IF NOT EXISTS categories (id SERIAL PRIMARY KEY, name VARCHAR(255) UNIQUE NOT NULL, slug VARCHAR(255) UNIQUE NOT NULL, description TEXT, icon TEXT, color VARCHAR(7) DEFAULT '#D4AF37', sort_order INTEGER DEFAULT 0, is_active BOOLEAN DEFAULT true, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true`);
 pool.query(`CREATE TABLE IF NOT EXISTS settings (key VARCHAR(255) PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
 pool.query(`CREATE TABLE IF NOT EXISTS sessions (id SERIAL PRIMARY KEY, user_id INTEGER, token_id VARCHAR(255) UNIQUE NOT NULL, ip_address INET, user_agent TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, expires_at TIMESTAMP NOT NULL)`);
 pool.query(`CREATE TABLE IF NOT EXISTS media (id SERIAL PRIMARY KEY, filename VARCHAR(255) NOT NULL, path TEXT NOT NULL, size INTEGER DEFAULT 0, uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
@@ -115,37 +127,45 @@ app.get('/api/products', async (req, res) => {
     const search = req.query.search || '';
     const category = req.query.category || '';
     const status = req.query.status || '';
+    const active = req.query.active; // for public frontend - filter by category's is_active
 
     let whereClause = 'WHERE 1=1';
     const params = [];
     let paramIndex = 1;
 
     if (search) {
-      whereClause += ` AND (name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
+      whereClause += ` AND (p.name ILIKE $${paramIndex} OR p.description ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
     if (category) {
-      whereClause += ` AND category = $${paramIndex}`;
+      whereClause += ` AND p.category = $${paramIndex}`;
       params.push(category);
       paramIndex++;
     }
     if (status) {
-      whereClause += ` AND status = $${paramIndex}`;
+      whereClause += ` AND p.status = $${paramIndex}`;
       params.push(status);
       paramIndex++;
+    }
+    if (active === 'true') {
+      whereClause += ` AND c.is_active = true`;
     }
 
     const allowedSortFields = ['name', 'category', 'price', 'rating', 'created_at', 'status'];
     const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
 
-    const countResult = await pool.query(`SELECT COUNT(*) FROM products ${whereClause}`, params);
+    const countQuery = active === 'true' 
+      ? `SELECT COUNT(*) FROM products p JOIN categories c ON p.category = c.name ${whereClause}`
+      : `SELECT COUNT(*) FROM products p ${whereClause}`;
+    const countResult = await pool.query(countQuery, params);
     const total = parseInt(countResult.rows[0].count);
 
-    const result = await pool.query(
-      `SELECT * FROM products ${whereClause} ORDER BY ${safeSortBy} ${sortOrder} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      [...params, limit, offset]
-    );
+    const selectQuery = active === 'true'
+      ? `SELECT p.* FROM products p JOIN categories c ON p.category = c.name ${whereClause} ORDER BY p.${safeSortBy} ${sortOrder} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`
+      : `SELECT p.* FROM products p ${whereClause} ORDER BY p.${safeSortBy} ${sortOrder} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    
+    const result = await pool.query(selectQuery, [...params, limit, offset]);
 
     res.json({
       items: result.rows,
@@ -174,11 +194,12 @@ app.post('/api/products', authenticateToken, upload.single('image'), async (req,
 
 app.put('/api/products/:id', authenticateToken, upload.single('image'), async (req, res) => {
   try {
-    const { name, category, price, price_value, description, status } = req.body;
+    const { name, category, price, price_value, description, status, is_active } = req.body;
     const image = req.file ? getImagePath(req.file.filename) : undefined;
     let query = 'UPDATE products SET name=$1, category=$2, price=$3, price_value=$4, description=$5, status=$6, updated_at=CURRENT_TIMESTAMP';
     const params = [name, category, price, price_value, description, status || 'published'];
     if (image) { query += ', image=$7'; params.push(image); }
+    if (is_active !== undefined) { query += ', is_active=$' + (params.length + 1); params.push(is_active === true || is_active === 'true'); }
     query += ' WHERE id=$' + (params.length + 1) + ' RETURNING *';
     params.push(req.params.id);
     const result = await pool.query(query, params);
@@ -292,7 +313,32 @@ app.post('/api/categories', authenticateToken, async (req, res) => {
 });
 
 app.put('/api/categories/:id', authenticateToken, async (req, res) => {
-  try { const { name, description, slug, color, sort_order, is_active } = req.body; const result = await pool.query('UPDATE categories SET name=$1, description=$2, slug=$3, color=$4, sort_order=$5, is_active=$6, updated_at=CURRENT_TIMESTAMP WHERE id=$7 RETURNING *', [name, description, slug, color, sort_order, is_active, req.params.id]); res.json(result.rows[0]); }
+  try { 
+    const { name, description, slug, color, sort_order, is_active } = req.body; 
+    
+    // Get the category's current is_active status before update
+    const oldCategory = await pool.query('SELECT name, is_active FROM categories WHERE id = $1', [req.params.id]);
+    const oldName = oldCategory.rows[0]?.name;
+    const wasActive = oldCategory.rows[0]?.is_active;
+    
+    // Update category
+    const result = await pool.query(
+      'UPDATE categories SET name=$1, description=$2, slug=$3, color=$4, sort_order=$5, is_active=$6, updated_at=CURRENT_TIMESTAMP WHERE id=$7 RETURNING *', 
+      [name, description, slug, color, sort_order, is_active, req.params.id]
+    );
+    
+    // If category is being marked inactive, also mark all its products as inactive
+    if (wasActive !== false && is_active === false) {
+      await pool.query('UPDATE products SET is_active = false WHERE category = $1', [oldName]);
+    }
+    
+    // If category is being marked active, also mark all its products as active
+    if ((wasActive === false || wasActive === undefined) && is_active === true) {
+      await pool.query('UPDATE products SET is_active = true WHERE category = $1', [name]);
+    }
+    
+    res.json(result.rows[0]); 
+  }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -391,15 +437,57 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
     const categories = await pool.query('SELECT COUNT(*) as total FROM categories').catch(e => ({ rows: [{ total: 0 }] }));
     const reviews = await pool.query('SELECT COUNT(*) as total FROM reviews').catch(e => ({ rows: [{ total: 0 }] }));
     const pendingReviews = await pool.query("SELECT COUNT(*) as total FROM reviews WHERE status = 'pending'").catch(e => ({ rows: [{ total: 0 }] }));
+    
+    const productsByCategory = await pool.query(`
+      SELECT category, COUNT(*) as count 
+      FROM products 
+      GROUP BY category 
+      ORDER BY count DESC
+    `).catch(e => ({ rows: [] }));
+    
+    const recentProducts = await pool.query(`
+      SELECT id, name, category, price, image, created_at 
+      FROM products 
+      ORDER BY created_at DESC 
+      LIMIT 5
+    `).catch(e => ({ rows: [] }));
+    
+    const avgRating = await pool.query(`
+      SELECT AVG(rating) as avg FROM products WHERE rating > 0
+    `).catch(e => ({ rows: [{ avg: 0 }] }));
+    
+    const productCount = parseInt(products.rows[0]?.total || 0);
+    const categoryCount = parseInt(categories.rows[0]?.total || 0);
+    const reviewCount = parseInt(reviews.rows[0]?.total || 0);
+    const avgRatingVal = parseFloat(avgRating.rows[0]?.avg || 0).toFixed(1);
+    
     res.json({
-      products: parseInt(products.rows[0]?.total || 0),
-      categories: parseInt(categories.rows[0]?.total || 0),
-      reviews: parseInt(reviews.rows[0]?.total || 0),
-      pendingReviews: parseInt(pendingReviews.rows[0]?.total || 0)
+      totalProducts: productCount,
+      totalCategories: categoryCount,
+      totalReviews: reviewCount,
+      pendingReviews: parseInt(pendingReviews.rows[0]?.total || 0),
+      averageRating: avgRatingVal,
+      changes: {
+        products: '0',
+        categories: 0,
+        rating: '0',
+        reviews: 0
+      },
+      recentProducts: recentProducts.rows,
+      categoryData: productsByCategory.rows.map(r => ({ name: r.category, count: parseInt(r.count) }))
     });
   } catch (err) {
     console.error('Dashboard stats error:', err.message);
-    res.status(200).json({ products: 0, categories: 0, reviews: 0, pendingReviews: 0 });
+    res.status(200).json({
+      totalProducts: 0,
+      totalCategories: 0,
+      totalReviews: 0,
+      pendingReviews: 0,
+      averageRating: '0.0',
+      changes: { products: '0', categories: 0, rating: '0', reviews: 0 },
+      recentProducts: [],
+      categoryData: []
+    });
   }
 });
 

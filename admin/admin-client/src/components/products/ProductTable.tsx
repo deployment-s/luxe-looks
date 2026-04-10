@@ -246,6 +246,15 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   >
                     {product.status}
                   </span>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ml-2 ${
+                      product.is_active !== false
+                        ? 'bg-green-900/30 text-green-400 border border-green-700'
+                        : 'bg-red-900/30 text-red-400 border border-red-700'
+                    }`}
+                  >
+                    {product.is_active !== false ? 'Active' : 'Inactive'}
+                  </span>
                 </td>
                 <td className="table-cell font-medium text-primary-500">
                   {product.price ? `KSh ${parseFloat(product.price.replace(/[KSh,\s]/gi, '')).toLocaleString()}` : '-'}

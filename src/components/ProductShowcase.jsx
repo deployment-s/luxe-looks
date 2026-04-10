@@ -83,7 +83,7 @@ const ProductShowcase = ({ siteSettings }) => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/products?status=published`);
+      const response = await fetch(`${API_URL}/products?status=published&active=true`);
 
       if (!response.ok) {
         throw new Error('API not available');
