@@ -138,10 +138,10 @@ const Navigation = ({ siteSettings }) => {
                   href={whatsapp}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full transition-all duration-300"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-full transition-all duration-300 text-sm"
                 >
-                  <MessageCircle size={20} />
-                  <span>Join WhatsApp Community</span>
+                  <MessageCircle size={16} />
+                  <span>Join WhatsApp</span>
                 </a>
               </div>
             </motion.div>
