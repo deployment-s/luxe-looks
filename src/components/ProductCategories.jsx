@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ShoppingBag, Watch, Gem, Sparkles, Heart, MessageCircle, Palette, Crown, Droplets, Scissors, Feather, Baby, Glasses, Umbrella, Sun, Anchor, Zap } from 'lucide-react';
+import { ShoppingBag, Watch, Gem, Sparkles, Heart, ArrowRight, Palette, Crown, Droplets, Scissors, Feather, Baby, Glasses, Umbrella, Sun, Anchor, Zap } from 'lucide-react';
 
 const ICON_MAP = {
   shoppingbag: ShoppingBag,
@@ -220,9 +220,8 @@ const ProductCategories = ({ siteSettings, categories: apiCategories }) => {
                       </p>
                       
                       <div className="flex items-center gap-2 text-primary text-sm font-medium">
-                        <MessageCircle size={16} />
-                        <span>Shop via WhatsApp</span>
-                        <span className="group-hover:translate-x-1 transition-transform">→</span>
+                        <span>Shop Now</span>
+                        <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                       </div>
                     </div>
 
