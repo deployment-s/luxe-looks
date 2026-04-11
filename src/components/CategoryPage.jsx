@@ -35,7 +35,17 @@ const CategoryPage = ({ siteSettings, categories }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null);
   const { whatsapp = '' } = siteSettings || {};
-  const waLink = whatsapp || 'https://chat.whatsapp.com/Gb8xGhuAacOJzY7cuMO5tK';
+  
+  const getWaLink = (product) => {
+    const message = `Hi! I'm interested in:\n\n*Product:* ${product.name}\n*Price:* ${formatPrice(product.price)}${product.image ? `\n\nImage: ${product.image}` : ''}\n\nPlease confirm availability.`;
+    const encodedMessage = encodeURIComponent(message);
+    
+    const waPhoneMatch = whatsapp?.match(/^(\d{10,15})$/);
+    if (waPhoneMatch) {
+      return `https://wa.me/${waPhoneMatch[1]}?text=${encodedMessage}`;
+    }
+    return `${whatsapp}?text=${encodedMessage}`;
+  };
 
   const formatPrice = (price) => {
     if (!price) return 'KSh 0';
@@ -209,7 +219,7 @@ const CategoryPage = ({ siteSettings, categories }) => {
                       {formatPrice(product.price)}
                     </p>
                     <a
-                      href={waLink}
+                      href={getWaLink(product)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 w-full justify-center px-4 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg transition-colors"
