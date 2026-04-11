@@ -139,7 +139,7 @@ const CategoryPage = ({ siteSettings, categories }) => {
             >
               {iconEmoji}
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-accent mb-4 drop-shadow-lg">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold text-white mb-4 drop-shadow-md">
               {category.name}
             </h1>
             {category.description && (
