@@ -9,7 +9,7 @@ const ProductShowcase = ({ siteSettings }) => {
   const { phone_number = '', whatsapp = '' } = siteSettings || {};
   
   const getWaLink = (product) => {
-    const message = `Hi! I'm interested in:\n\n*Product:* ${product.name}\n*Price:* ${product.price}${product.image ? `\n\nImage: ${product.image}` : ''}\n\nPlease confirm availability.`;
+    const message = `Hi! I'm interested in:\n\n*Product:* ${product.name}\n*Price:* ${product.price}\n\nPlease confirm availability.`;
     const encodedMessage = encodeURIComponent(message);
     
     const phone = phone_number?.replace(/\D/g, '') || whatsapp?.replace(/\D/g, '');
