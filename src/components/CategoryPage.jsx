@@ -34,17 +34,17 @@ const CategoryPage = ({ siteSettings, categories }) => {
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null);
-  const { whatsapp = '' } = siteSettings || {};
+  const { phone_number = '', whatsapp = '' } = siteSettings || {};
   
   const getWaLink = (product) => {
     const message = `Hi! I'm interested in:\n\n*Product:* ${product.name}\n*Price:* ${formatPrice(product.price)}${product.image ? `\n\nImage: ${product.image}` : ''}\n\nPlease confirm availability.`;
     const encodedMessage = encodeURIComponent(message);
     
-    const waPhoneMatch = whatsapp?.match(/^(\d{10,15})$/);
-    if (waPhoneMatch) {
-      return `https://wa.me/${waPhoneMatch[1]}?text=${encodedMessage}`;
+    const phone = phone_number?.replace(/\D/g, '') || whatsapp?.replace(/\D/g, '');
+    if (phone && phone.length >= 10) {
+      return `https://wa.me/${phone}?text=${encodedMessage}`;
     }
-    return `${whatsapp}?text=${encodedMessage}`;
+    return `https://wa.me/254712345678?text=${encodedMessage}`;
   };
 
   const formatPrice = (price) => {
