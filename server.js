@@ -114,6 +114,52 @@ app.get('/api/reviews', async (req, res) => {
   }
 });
 
+// Create review (public)
+app.post('/api/reviews', async (req, res) => {
+  try {
+    const { name, rating, comment } = req.body;
+    const result = await pool.query(
+      "INSERT INTO reviews (name, rating, comment, status) VALUES ($1, $2, $3, 'pending') RETURNING *",
+      [name, rating, comment]
+    );
+    res.json(result.rows[0]);
+  } catch (err) { 
+    console.error('/api/reviews POST error:', err.message);
+    res.status(500).json({ error: err.message }); 
+  }
+});
+
+// Update review (admin)
+app.put('/api/reviews/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, rating, comment, status } = req.body;
+    const result = await pool.query(
+      "UPDATE reviews SET name = $1, rating = $2, comment = $3, status = $4 WHERE id = $5 RETURNING *",
+      [name, rating, comment, status || 'pending', id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Review not found' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) { 
+    console.error('/api/reviews PUT error:', err.message);
+    res.status(500).json({ error: err.message }); 
+  }
+});
+
+// Delete review (admin)
+app.delete('/api/reviews/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query("DELETE FROM reviews WHERE id = $1", [id]);
+    res.json({ success: true });
+  } catch (err) { 
+    console.error('/api/reviews DELETE error:', err.message);
+    res.status(500).json({ error: err.message }); 
+  }
+});
+
 // Site settings
 app.get('/api/site', async (req, res) => {
   try {
