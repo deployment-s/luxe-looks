@@ -6,8 +6,19 @@ const API_URL = import.meta.env.VITE_API_URL || '/api';
 const ASSETS_URL = import.meta.env.VITE_ASSETS_URL || '';
 
 const ProductShowcase = ({ siteSettings }) => {
-  const { whatsapp = '' } = siteSettings || {};
-  const waLink = whatsapp || 'https://chat.whatsapp.com/Gb8xGhuAacOJzY7cuMO5tK';
+  const { phone_number = '', whatsapp = '' } = siteSettings || {};
+  
+  const getWaLink = (product) => {
+    const message = `Hi! I'm interested in:\n\n*Product:* ${product.name}\n*Price:* ${product.price}${product.image ? `\n\nImage: ${product.image}` : ''}\n\nPlease confirm availability.`;
+    const encodedMessage = encodeURIComponent(message);
+    
+    const phone = phone_number?.replace(/\D/g, '') || whatsapp?.replace(/\D/g, '');
+    if (phone && phone.length >= 10) {
+      return `https://wa.me/${phone}?text=${encodedMessage}`;
+    }
+    return `https://wa.me/254712345678?text=${encodedMessage}`;
+  };
+  
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -245,7 +256,7 @@ const ProductShowcase = ({ siteSettings }) => {
 
                 {/* CTA */}
                 <a
-                  href={waLink}
+                  href={getWaLink(product)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full bg-primary hover:bg-yellow-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg"
@@ -269,7 +280,7 @@ const ProductShowcase = ({ siteSettings }) => {
             Want to see more products? Browse our full catalog on WhatsApp!
           </p>
           <a
-            href={waLink}
+            href={`https://wa.me/${phone_number?.replace(/\D/g, '') || whatsapp?.replace(/\D/g, '') || '254712345678'}?text=${encodeURIComponent('Hi! I would like to view your full product catalog.')}`}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-secondary inline-flex items-center gap-3"
@@ -347,7 +358,7 @@ const ProductShowcase = ({ siteSettings }) => {
                     {selectedProduct.description}
                   </p>
                   <a
-                    href={waLink}
+                    href={getWaLink(selectedProduct)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 bg-primary hover:bg-yellow-600 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300"
